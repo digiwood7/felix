@@ -53,12 +53,16 @@ export interface LocationOption {
 export interface Locations {
   ask: string;
   hint: string;
+  /** 건물을 고르지 않았거나 알 수 없을 때 쓰는 표기 */
+  fallback_text: string;
   options: LocationOption[];
 }
 
 export interface Arrival {
   before_min: number;
   round: RoundMode;
+  /** `{location}` 자리에 선택한 건물 표기가 들어간다 */
+  text: string;
   /**
    * 도착 항목에 붙는 보조 설명.
    *
@@ -69,9 +73,16 @@ export interface Arrival {
   note?: string;
 }
 
+export interface Exam {
+  /** `{duration}` 자리에 소요시간 표기가 들어간다 */
+  text: string;
+}
+
 export interface Fasting {
   hours: number;
   round: RoundMode;
+  /** 지시문 */
+  text: string;
   /** 보조 설명. 실행 조언이지 판정이 아니다 */
   note?: string;
   /** note를 이 시각 구간에서만 표시한다. 시작 포함, 끝 미포함 */
@@ -125,6 +136,7 @@ export interface ExamRuleset {
   duration_min: number;
   locations: Locations;
   arrival: Arrival;
+  exam: Exam;
   fasting: Fasting;
   conditional: ConditionalRule[];
   restrictions: Restriction[];
