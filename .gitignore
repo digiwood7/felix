@@ -9,3 +9,7 @@ node_modules/
 *.tsbuildinfo
 next-env.d.ts
 .playwright-mcp/
+
+# 스크린샷 · 검증 산출물
+*.png
+!public/**/*.png
