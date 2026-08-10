@@ -31,4 +31,15 @@ body {
   flex-direction: column;
   background-color: #ffffff;
   color: #0f172a;
+
+  /**
+   * 한글은 기본값(break-word)으로 두면 어절 중간에서 잘린다.
+   * "드시지 마세 / 요", "핵 / 의학과" 처럼 읽힌다.
+   * keep-all 은 어절을 유지하고 공백에서만 끊는다.
+   *
+   * 급하게 읽는 화면에서 어절이 쪼개지면 다시 읽게 된다.
+   * 고령 사용자에게는 특히 그렇다.
+   */
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }

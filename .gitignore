@@ -8,3 +8,4 @@ node_modules/
 # typescript / next
 *.tsbuildinfo
 next-env.d.ts
+.playwright-mcp/

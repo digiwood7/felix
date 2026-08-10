@@ -10,8 +10,11 @@
  */
 export default function Disclaimer() {
   return (
+    // 1rem = 17px. PRD §13 본문 최소치를 지킨다.
+    // 각주처럼 작게 줄이면 고령 사용자에게는 없는 것과 같고,
+    // 이 두 문장은 관리자 승인 자료의 핵심이기도 하다 (PRD §11).
     <footer className="mt-auto border-t border-slate-200 px-5 py-4">
-      <p className="text-[0.8235rem] leading-relaxed text-slate-600">
+      <p className="text-[1rem] leading-snug text-slate-600">
         이 서비스는 병원 공식 서비스가 아니며, 검사 가능 여부를 판단하지
         않습니다. 최종 확인은 반드시 핵의학과 직원에게 받으세요.
       </p>

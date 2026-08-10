@@ -1,17 +1,73 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
+
+import Timeline from "@/components/Timeline";
+import { parseReservationParam } from "@/lib/reservationParam";
+import { f18FdgPet } from "@/lib/rules";
+import { buildTimeline } from "@/lib/schedule";
+
 /**
  * S2 — 개인화 역산 타임라인 (PRD §8 F1)
  *
- * 구현: T4 (계산 엔진은 T3)
- * 여기까지가 최소 가치다. 환자가 여기서 이탈해도 목적의 절반은 달성된다.
+ * 입력은 URL 파라미터로 받는다.
+ *   ?t=202608060825  예약 일시 (개인 식별 정보가 아니다)
+ *   ?b=cancer        건물. 없으면 건물명 없이 표기한다
+ *
+ * 잘못된 값이면 크래시하지 않고 S1 으로 되돌린다.
+ * 입력 UI 자체는 T5에서 만든다.
  */
-export default function TimelineScreen() {
-  return (
-    <main className="flex-1 px-5 py-8">
-      <h1 className="text-2xl font-bold">준비 일정</h1>
+export default async function TimelineScreen({
+  searchParams,
+}: {
+  searchParams: Promise<{ t?: string; b?: string }>;
+}) {
+  const { t, b } = await searchParams;
+  const reservation = parseReservationParam(t);
 
-      <p className="mt-8 text-base text-slate-500">
-        S2 타임라인 화면 — T4에서 구현합니다.
-      </p>
+  if (!reservation) redirect("/");
+
+  const timeline = buildTimeline(f18FdgPet, {
+    reservation,
+    locationId: b,
+  });
+
+  const examDay = timeline[timeline.length - 1];
+
+  return (
+    <main className="flex-1 px-5 py-6">
+      {/* 잘못 입력했으면 여기서 알아차려야 한다. 전부가 틀어지기 때문이다 */}
+      <header className="mb-5 flex items-baseline justify-between gap-3">
+        <p className="text-[1.06rem] font-bold text-slate-900">
+          {formatReservationLabel(
+            examDay.date,
+            examDay.weekday,
+            reservation.hour,
+            reservation.minute,
+          )}{" "}
+          예약
+        </p>
+        <Link
+          href="/"
+          className="shrink-0 text-[1rem] text-slate-600 underline underline-offset-4"
+        >
+          다시 입력
+        </Link>
+      </header>
+
+      <Timeline timeline={timeline} />
     </main>
   );
+}
+
+/** "2026-08-06", "목", 8, 25 → "8월 6일(목) 08:25" */
+function formatReservationLabel(
+  date: string,
+  weekday: string,
+  hour: number,
+  minute: number,
+): string {
+  const month = Number(date.slice(5, 7));
+  const day = Number(date.slice(8, 10));
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${month}월 ${day}일(${weekday}) ${pad(hour)}:${pad(minute)}`;
 }
