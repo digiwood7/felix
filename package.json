@@ -10,7 +10,7 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm test && npm run lint:words",
-    "lint:words": "! grep -rn \"검사 가능\\|검사 불가\\|괜찮습니다\\|문제없습니다\\|판단됩니다\" app/ lib/ components/ --exclude=Disclaimer.tsx"
+    "lint:words": "! grep -rn \"검사 가능\\|검사 불가\\|괜찮습니다\\|문제없습니다\\|판단됩니다\" app/ lib/ components/ --exclude=Disclaimer.tsx --exclude=*.test.ts"
   },
   "dependencies": {
     "next": "^16.3.0",

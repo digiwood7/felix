@@ -1,0 +1,98 @@
+{
+  "id": "f18-fdg-pet",
+  "label": "PET/CT (F-18 FDG)",
+  "timezone": "Asia/Seoul",
+  "duration_min": 80,
+
+  "locations": {
+    "ask": "어느 건물에서 검사받으시나요?",
+    "hint": "예약 안내문에 적혀 있습니다",
+    "options": [
+      { "id": "cancer", "label": "암병원", "text": "암병원 지하 1층 핵의학과" },
+      { "id": "main", "label": "본관", "text": "본관 지하 1층 핵의학과" }
+    ]
+  },
+
+  "arrival": {
+    "before_min": 20,
+    "round": "floor_10min"
+  },
+
+  "fasting": {
+    "hours": 6,
+    "round": "floor_hour",
+    "note": "전날 저녁 식사 이후로 하시면 편합니다",
+    "note_if_between": ["00:00", "06:00"],
+    "allowed": ["생수"],
+    "allowed_note": "같은 날 다른 검사가 있으면 접수처에 먼저 확인하세요",
+    "forbidden": ["보리차", "커피", "우유", "주스", "껌", "사탕", "링거"]
+  },
+
+  "conditional": [
+    {
+      "id": "diabetes",
+      "ask": "당뇨약이나 인슐린을 사용하시나요?",
+      "offset_h": -4,
+      "round": "floor_hour",
+      "text": "이 시각까지만 복용 / 투여 가능합니다",
+      "after_text": "이 시각 이후 사용하셨다면 접수처에 꼭 말씀해 주세요"
+    }
+  ],
+
+  "restrictions": [
+    {
+      "id": "exercise",
+      "from": "prev_day_start",
+      "display": "all_day",
+      "text": "등산 · 헬스 · 골프 등 과격한 운동을 하지 마세요"
+    }
+  ],
+
+  "intake_categories": [
+    { "id": "beverage_caffeine", "label": "커피 · 차" },
+    { "id": "beverage_sugar", "label": "주스 · 음료" },
+    { "id": "dairy", "label": "우유 · 유제품" },
+    { "id": "candy_gum", "label": "사탕 · 껌" },
+    { "id": "intake_other", "label": "그 외" }
+  ],
+
+  "medication_categories": [
+    { "id": "med_bp", "label": "혈압약" },
+    { "id": "med_diabetes", "label": "당뇨약 · 인슐린" },
+    { "id": "med_thyroid", "label": "갑상선약" },
+    { "id": "med_other", "label": "그 외" }
+  ],
+
+  "flags": [
+    { "id": "weight", "q": "체중이 140kg을 넘으시나요?", "level": "call" },
+    { "id": "claustro", "q": "폐쇄공포증이 있으신가요?", "level": "call" },
+    {
+      "id": "pregnancy",
+      "q": "임신 가능성이 있거나 수유 중이신가요?",
+      "level": "call"
+    },
+    { "id": "glucose", "q": "혈당이 200을 넘은 적이 있나요?", "level": "tell" }
+  ],
+
+  "triage": [
+    {
+      "when": "fasting.broken",
+      "level": "tell",
+      "label": "금식 시작 이후 음식 섭취"
+    },
+    { "when": "intake.non_water", "level": "tell", "label": "물 외 섭취" },
+    { "when": "medication.taken", "level": "tell", "label": "당일 복약" },
+    {
+      "when": "diabetes.after_cutoff",
+      "level": "call",
+      "label": "당뇨약 마지노선 이후 사용"
+    },
+    { "when": "exercise.yes", "level": "tell", "label": "전날 과격한 운동" }
+  ],
+
+  "levels": {
+    "ok": "접수처에 추가로 말씀하실 내용이 없습니다",
+    "tell": "접수하실 때 이 화면을 보여주세요",
+    "call": "출발 전에 1599-3114로 먼저 전화해 주세요"
+  }
+}

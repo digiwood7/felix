@@ -1,0 +1,153 @@
+import { describe, expect, it } from "vitest";
+
+import raw from "./f18-fdg-pet.json";
+import { f18FdgPet } from "./index";
+import type { Level, TriageCondition } from "./types";
+
+const LEVELS: Level[] = ["ok", "tell", "call"];
+
+const TRIAGE_CONDITIONS: TriageCondition[] = [
+  "fasting.broken",
+  "intake.non_water",
+  "medication.taken",
+  "diabetes.after_cutoff",
+  "exercise.yes",
+];
+
+/**
+ * 안내지 대조로 확정한 값 (2026-08-10 확인).
+ *
+ * 이 숫자들이 이 서비스의 전부다. 하나가 틀리면 모든 환자에게
+ * 일관되게 틀린 시각이 나간다. 값을 바꿀 때는 반드시 최신 안내지와
+ * 다시 대조하고, 커밋 본문에 어느 판본인지 남긴다.
+ */
+describe("룰셋 — 안내지 대조값", () => {
+  it("금식은 6시간 전", () => {
+    expect(f18FdgPet.fasting.hours).toBe(6);
+  });
+
+  it("당뇨약 · 인슐린은 4시간 전", () => {
+    const diabetes = f18FdgPet.conditional.find((c) => c.id === "diabetes");
+    expect(diabetes?.offset_h).toBe(-4);
+  });
+
+  it("도착은 20분 전", () => {
+    expect(f18FdgPet.arrival.before_min).toBe(20);
+  });
+
+  it("검사 소요시간은 80분", () => {
+    expect(f18FdgPet.duration_min).toBe(80);
+  });
+
+  it("체중 기준은 140kg", () => {
+    const weight = f18FdgPet.flags.find((f) => f.id === "weight");
+    expect(weight?.q).toContain("140kg");
+  });
+
+  it("혈당 기준은 200", () => {
+    const glucose = f18FdgPet.flags.find((f) => f.id === "glucose");
+    expect(glucose?.q).toContain("200");
+  });
+
+  it("연락처는 1599-3114", () => {
+    expect(f18FdgPet.levels.call).toContain("1599-3114");
+  });
+
+  it("물 단서가 들어 있다 — 같은 날 다른 검사", () => {
+    expect(f18FdgPet.fasting.allowed_note).toContain("다른 검사");
+  });
+});
+
+describe("룰셋 — 안전 불변조건", () => {
+  it("모든 내림은 floor 계열이다. 반올림 단위가 없다", () => {
+    const modes = [
+      f18FdgPet.arrival.round,
+      f18FdgPet.fasting.round,
+      ...f18FdgPet.conditional.map((c) => c.round),
+    ];
+    for (const mode of modes) {
+      expect(mode.startsWith("floor_")).toBe(true);
+    }
+  });
+
+  it("도착 시각은 시 단위로 내리지 않는다", () => {
+    // floor_hour 면 10:50 예약이 10:00 도착(50분 전)이 된다
+    expect(f18FdgPet.arrival.round).toBe("floor_10min");
+  });
+
+  it("타임존이 KST로 고정되어 있다", () => {
+    expect(f18FdgPet.timezone).toBe("Asia/Seoul");
+  });
+
+  // 새벽 보정은 v1.1에서 제거되었다 (PRD §9.2)
+  it("early_morning_shift 가 없다", () => {
+    expect(raw.fasting).not.toHaveProperty("early_morning_shift");
+    expect(JSON.stringify(raw)).not.toContain("early_morning_shift");
+  });
+});
+
+describe("룰셋 — 판정이 아닌 행동 지시", () => {
+  it("levels 가 3종을 모두 갖는다", () => {
+    for (const level of LEVELS) {
+      expect(f18FdgPet.levels[level]).toBeTruthy();
+    }
+  });
+
+  it("금지 표현이 없다", () => {
+    const forbidden = [
+      "검사 가능",
+      "검사 불가",
+      "괜찮습니다",
+      "문제없습니다",
+      "판단됩니다",
+    ];
+    const json = JSON.stringify(raw);
+    for (const word of forbidden) {
+      expect(json).not.toContain(word);
+    }
+  });
+
+  it("flags 의 level 이 전부 유효하다", () => {
+    for (const flag of f18FdgPet.flags) {
+      expect(LEVELS).toContain(flag.level);
+    }
+  });
+
+  it("triage 의 level 과 when 이 전부 유효하다", () => {
+    for (const rule of f18FdgPet.triage ?? []) {
+      expect(LEVELS).toContain(rule.level);
+      expect(TRIAGE_CONDITIONS).toContain(rule.when);
+    }
+  });
+});
+
+describe("룰셋 — 자유 입력 대체", () => {
+  it("섭취 · 복약 선택지가 정의되어 있다", () => {
+    expect(f18FdgPet.intake_categories.length).toBeGreaterThan(0);
+    expect(f18FdgPet.medication_categories.length).toBeGreaterThan(0);
+  });
+
+  it("카테고리 id 가 중복되지 않는다", () => {
+    const ids = [
+      ...f18FdgPet.intake_categories,
+      ...f18FdgPet.medication_categories,
+    ].map((c) => c.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+describe("룰셋 — 검사 장소", () => {
+  it("건물이 여러 곳이므로 선택지로 정의되어 있다", () => {
+    expect(f18FdgPet.locations.options.length).toBeGreaterThan(1);
+  });
+
+  it("건물 선택지 id 가 중복되지 않는다", () => {
+    const ids = f18FdgPet.locations.options.map((o) => o.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  // 서비스가 건물을 추측하면 환자가 다른 건물까지 걸어갔다 온다
+  it("단일 location 필드로 건물을 고정하지 않는다", () => {
+    expect(raw).not.toHaveProperty("location");
+  });
+});
