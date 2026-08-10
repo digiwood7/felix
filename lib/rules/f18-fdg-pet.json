@@ -15,7 +15,8 @@
 
   "arrival": {
     "before_min": 20,
-    "round": "floor_10min"
+    "round": "floor_10min",
+    "note": "접수 시 혈당을 측정합니다 · 안내지 기준은 200 이하입니다"
   },
 
   "fasting": {
@@ -70,8 +71,7 @@
       "id": "pregnancy",
       "q": "임신 가능성이 있거나 수유 중이신가요?",
       "level": "call"
-    },
-    { "id": "glucose", "q": "혈당이 200을 넘은 적이 있나요?", "level": "tell" }
+    }
   ],
 
   "triage": [

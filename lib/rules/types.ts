@@ -59,6 +59,14 @@ export interface Locations {
 export interface Arrival {
   before_min: number;
   round: RoundMode;
+  /**
+   * 도착 항목에 붙는 보조 설명.
+   *
+   * 혈당처럼 **당일 병원이 측정하는 값**은 환자 문답으로 판정할 수 없다.
+   * 환자가 자가 체크한 결과로 🟢 를 띄우면 거짓 안심이 된다.
+   * 이런 항목은 flags 가 아니라 여기에 사실로 적는다.
+   */
+  note?: string;
 }
 
 export interface Fasting {

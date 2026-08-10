@@ -44,9 +44,9 @@ describe("룰셋 — 안내지 대조값", () => {
     expect(weight?.q).toContain("140kg");
   });
 
-  it("혈당 기준은 200", () => {
-    const glucose = f18FdgPet.flags.find((f) => f.id === "glucose");
-    expect(glucose?.q).toContain("200");
+  it("혈당 기준 200은 도착 항목의 사실로 적혀 있다", () => {
+    expect(f18FdgPet.arrival.note).toContain("혈당");
+    expect(f18FdgPet.arrival.note).toContain("200");
   });
 
   it("연락처는 1599-3114", () => {
@@ -83,6 +83,26 @@ describe("룰셋 — 안전 불변조건", () => {
   it("early_morning_shift 가 없다", () => {
     expect(raw.fasting).not.toHaveProperty("early_morning_shift");
     expect(JSON.stringify(raw)).not.toContain("early_morning_shift");
+  });
+
+  /**
+   * 혈당은 당일 병원이 측정한다. 환자 자가 응답으로 판정할 수 있는 값이 아니다.
+   *
+   * flags 에 넣으면 "해당 없음"을 고른 환자에게 🟢 가 뜨는데,
+   * 당일 측정값이 200을 넘으면 그 환자는 검사를 못 받는다.
+   * 서비스가 거짓 안심을 준 것이 되고, 이 프로젝트가 얻어야 할 신뢰를
+   * 정확히 반대로 깎는다.
+   */
+  it("혈당은 flags 에 없다 — 환자가 판정할 수 없는 값이다", () => {
+    expect(f18FdgPet.flags.find((f) => f.id === "glucose")).toBeUndefined();
+  });
+
+  it("flags 는 환자가 스스로 아는 것만 묻는다", () => {
+    expect(f18FdgPet.flags.map((f) => f.id).sort()).toEqual([
+      "claustro",
+      "pregnancy",
+      "weight",
+    ]);
   });
 });
 
