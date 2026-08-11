@@ -61,6 +61,18 @@ export default async function TimelineScreen({
       </p>
 
       <Timeline timeline={timeline} ruleset={f18FdgPet} />
+
+      {/* S3 진입은 강제하지 않는다. 타임라인만 보고 나가도 목적의 절반은
+          달성된 것이다 (PRD §10). 그래서 링크는 목록 아래에 둔다 */}
+      <Link
+        href={`/pet/check?t=${t}${b ? `&b=${b}` : ""}`}
+        className="mt-8 flex min-h-[64px] items-center justify-center rounded-2xl bg-slate-900 px-5 text-center text-[1.24rem] font-bold text-white"
+      >
+        검사 준비 확인하기
+      </Link>
+      <p className="mt-2 text-center text-[1.06rem] leading-snug text-slate-600">
+        5가지만 답하시면 접수처에 보여드릴 화면을 만들어 드립니다
+      </p>
     </main>
   );
 }
