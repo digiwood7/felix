@@ -10,6 +10,14 @@
 /** 출력 레벨 — 판정이 아니라 행동 지시다 (PRD §9.3) */
 export type Level = "ok" | "tell" | "call";
 
+/** 타임라인 항목의 종류. 화면에서 색·배지를 가르는 기준이 된다 */
+export type TimelineItemKind =
+  | "restriction"
+  | "fasting"
+  | "conditional"
+  | "arrival"
+  | "exam";
+
 /**
  * 내림 단위 — 반올림은 어떤 경우에도 없다 (PRD §9.2).
  * 모든 시각은 이르게 틀리는 방향으로만 어긋난다.
@@ -150,6 +158,13 @@ export interface ExamRuleset {
    * 읽기 시작한다. 목록이 무엇인지 먼저 말해 준다.
    */
   intro: string;
+  /**
+   * 항목 종류별 라벨. 카드 상단 배지에 쓴다.
+   *
+   * "이건 금식 얘기" 를 읽기 전에 알 수 있어야, 자기와 상관없는 항목을
+   * 건너뛸 수 있다. 안내지가 안 읽히는 이유가 이 구분이 없어서다.
+   */
+  labels: Record<TimelineItemKind, string>;
   locations: Locations;
   arrival: Arrival;
   exam: Exam;

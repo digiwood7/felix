@@ -1,4 +1,11 @@
-import type { ExamRuleset, RoundMode, TimeOfDay } from "./rules/types";
+import type {
+  ExamRuleset,
+  RoundMode,
+  TimeOfDay,
+  TimelineItemKind,
+} from "./rules/types";
+
+export type { TimelineItemKind };
 
 /**
  * 시각 계산 엔진 — PRD §9.2
@@ -35,13 +42,6 @@ export interface TimelineInput {
   /** 룰셋 locations.options 의 id. 없으면 건물명 없이 표기한다 */
   locationId?: string;
 }
-
-export type TimelineItemKind =
-  | "restriction"
-  | "fasting"
-  | "conditional"
-  | "arrival"
-  | "exam";
 
 export interface TimelineItem {
   kind: TimelineItemKind;

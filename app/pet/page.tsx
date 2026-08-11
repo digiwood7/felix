@@ -34,35 +34,33 @@ export default async function TimelineScreen({
   const examDay = timeline[timeline.length - 1];
 
   return (
-    <main className="flex-1 px-4 py-5">
+    <main className="flex-1 px-4 pt-5 pb-8">
       {/* 잘못 입력했으면 여기서 알아차려야 한다. 전부가 틀어지기 때문이다 */}
-      <header className="mb-5 rounded-2xl bg-slate-100 px-4 py-3">
-        <p className="text-[0.94rem] font-medium text-slate-700">검사 예약</p>
-        <div className="mt-0.5 flex items-baseline justify-between gap-3">
-          <p className="text-[1.29rem] font-bold text-slate-900">
-            {formatReservationLabel(
-              examDay.date,
-              examDay.weekday,
-              reservation.hour,
-              reservation.minute,
-            )}
-          </p>
-          {/* 터치 영역 48px 이상 (PRD §13). 음수 마진으로 시각적 여백은 유지한다 */}
-          <Link
-            href="/"
-            className="-my-3 -mr-2 flex min-h-[48px] shrink-0 items-center px-2 text-[1rem] font-medium text-slate-700 underline underline-offset-4"
-          >
-            다시 입력
-          </Link>
-        </div>
+      <header className="mb-4 rounded-2xl bg-slate-900 px-4 py-4 text-white">
+        <p className="text-[1rem] font-medium text-slate-300">내 검사 예약</p>
+        <p className="mt-1 text-[1.65rem] leading-tight font-extrabold">
+          {formatReservationLabel(
+            examDay.date,
+            examDay.weekday,
+            reservation.hour,
+            reservation.minute,
+          )}
+        </p>
+        {/* 터치 영역 48px 이상 (PRD §13). 음수 마진으로 시각적 여백은 유지한다 */}
+        <Link
+          href="/"
+          className="-mb-2 -ml-2 mt-1 inline-flex min-h-[48px] items-center px-2 text-[1.06rem] font-medium text-slate-300 underline underline-offset-4"
+        >
+          날짜 · 시각 다시 입력
+        </Link>
       </header>
 
       {/* 무엇을 보고 있는지 먼저 말해 준다. 목록부터 들이밀지 않는다 */}
-      <p className="mb-5 text-[1.06rem] leading-snug text-slate-700">
+      <p className="mb-6 text-[1.12rem] leading-relaxed text-slate-700">
         {f18FdgPet.intro}
       </p>
 
-      <Timeline timeline={timeline} />
+      <Timeline timeline={timeline} ruleset={f18FdgPet} />
     </main>
   );
 }

@@ -6,6 +6,14 @@
 
   "intro": "검사를 위한 주의사항을 날짜와 시간별로 알려드리겠습니다",
 
+  "labels": {
+    "restriction": "주의",
+    "fasting": "금식",
+    "conditional": "복약",
+    "arrival": "도착",
+    "exam": "검사"
+  },
+
   "locations": {
     "ask": "어느 건물에서 검사받으시나요?",
     "hint": "예약 안내문에 적혀 있습니다",
