@@ -33,7 +33,7 @@ export default async function InputScreen({
           핵의학과 PET 검사 준비 안내
         </h1>
         <p className="mt-2 text-[1.12rem] leading-relaxed text-slate-700">
-          검사 예약 날짜와 시간을 선택하시면 준비 일정을 알려드립니다.
+          PET 검사 예약 날짜와 시간을 선택하시면 준비 일정을 알려드립니다.
         </p>
       </header>
 

@@ -56,18 +56,19 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
 
   return (
     <div className="flex flex-col gap-7">
-      <Section step={1} title="검사 날짜">
+      {/* 안내지의 "예약일시" 와 같은 낱말을 쓴다.
+          "검사 시간" 은 안내지에서 소요 시간이라는 뜻으로 쓰이므로 피한다 */}
+      <Section step={1} title="예약 날짜">
         <input
           type="date"
           value={date}
           min={today || undefined}
           onChange={(e) => setDate(e.target.value)}
-          aria-label="검사 날짜"
+          aria-label="예약 날짜"
           className="min-h-[56px] w-full rounded-xl border-2 border-slate-500 px-4 text-[1.24rem] font-bold text-slate-900"
         />
       </Section>
 
-      {/* 안내지가 "예약시간" 을 쓴다. 화면 전체에서 "시간" 으로 통일한다 */}
       <Section step={2} title="예약 시간">
         <Choices
           name="hour"
