@@ -117,7 +117,10 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
           min={today || undefined}
           onChange={(e) => setDate(e.target.value)}
           aria-label="예약 날짜"
-          className="min-h-[56px] w-full rounded-xl border-2 border-slate-500 px-4 text-[1.24rem] font-bold text-slate-900"
+          // iOS Safari 의 date 입력은 내용 폭만큼 최소 너비를 가지려 해서
+          // 컨테이너를 밀어내고 가로 스크롤을 만든다.
+          // appearance-none 으로 기본 크기 계산을 끄고, min-w-0 으로 줄어들 수 있게 한다.
+          className="block min-h-[56px] w-full min-w-0 max-w-full appearance-none rounded-xl border-2 border-slate-500 px-4 text-[1.24rem] font-bold text-slate-900"
         />
       </Section>
 
@@ -234,7 +237,10 @@ function Section({
   return (
     // 구획 구분 — 타임라인의 날짜 머리와 같은 형태로 맞춘다.
     // 여백만으로 나누면 세 단계가 한 덩어리로 읽힌다.
-    <section>
+    //
+    // min-w-0 이 없으면 flex 자식의 기본값(min-width:auto) 때문에
+    // 안쪽 요소가 넘칠 때 구획째로 밀려 가로 스크롤이 생긴다.
+    <section className="min-w-0">
       <h2 className="mb-3 flex items-center gap-2 border-b-2 border-slate-900 pb-2">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-900 text-[1.06rem] font-bold text-white">
           {step}
