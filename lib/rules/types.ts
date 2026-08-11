@@ -88,9 +88,18 @@ export interface Fasting {
   /** note를 이 시각 구간에서만 표시한다. 시작 포함, 끝 미포함 */
   note_if_between?: [TimeOfDay, TimeOfDay];
   allowed: string[];
+  /** `{items}` 자리에 allowed 가 들어간다 */
+  allowed_text: string;
   /** 허용 항목에 붙는 단서 */
   allowed_note?: string;
   forbidden: string[];
+  /**
+   * `{items}` 자리에 forbidden 이 들어간다.
+   *
+   * ✕ 같은 기호에 의미를 싣지 않는다. 기호는 읽는 사람마다 다르게 해석되고
+   * 스크린리더는 읽지 못한다 (WCAG 1.1.1). 금지는 말로 쓴다.
+   */
+  forbidden_text: string;
 }
 
 export interface ConditionalRule {

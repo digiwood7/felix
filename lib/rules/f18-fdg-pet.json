@@ -34,8 +34,10 @@
     "note": "전날 저녁 식사 이후로 하시면 편합니다",
     "note_if_between": ["00:00", "06:00"],
     "allowed": ["물(생수)"],
+    "allowed_text": "{items}만 가능합니다",
     "allowed_note": "혹시 같은 날 다른 검사가 있으면 확인 후 생수를 드시기 바랍니다",
-    "forbidden": ["보리차", "커피", "우유", "주스", "껌", "사탕"]
+    "forbidden": ["보리차", "커피", "우유", "주스", "껌", "사탕"],
+    "forbidden_text": "{items}도 안 됩니다"
   },
 
   "conditional": [

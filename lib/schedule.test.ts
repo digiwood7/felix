@@ -246,10 +246,18 @@ describe("8. 문구는 룰셋에서 읽는다", () => {
     expect(find(timeline, "fasting").text).toBe(f18FdgPet.fasting.text);
   });
 
-  it("허용 음료와 금지 음료가 각각 다른 줄이다", () => {
+  it("허용 음식과 금지 음식이 각각 다른 줄이다", () => {
     const notes = find(timeline, "fasting").notes;
     expect(notes).toContain("물(생수)만 가능합니다");
-    expect(notes).toContain("✕ 보리차 커피 우유 주스 껌 사탕");
+    expect(notes).toContain("보리차, 커피, 우유, 주스, 껌, 사탕도 안 됩니다");
+  });
+
+  // 기호는 읽는 사람마다 다르게 해석되고 스크린리더는 읽지 못한다
+  it("금지를 기호로 표시하지 않는다", () => {
+    const notes = find(timeline, "fasting").notes.join("\n");
+    expect(notes).not.toContain("✕");
+    expect(notes).not.toContain("×");
+    expect(notes).not.toContain("❌");
   });
 
   it("금식 보조에 다른 검사 단서가 들어간다", () => {

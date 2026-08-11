@@ -131,17 +131,19 @@ function formatDuration(totalMinutes: number): string {
 }
 
 /**
- * 허용 음료와 금지 음료를 각각 한 줄로 만든다.
+ * 허용 · 금지 음식을 각각 한 줄로 만든다. 문구 틀은 룰셋에서 읽는다.
  *
- * 한 줄로 합치면 "물(생수)만 가능 · ✕ 보리차 커피 우유 주스 껌 사탕" 이 되어
- * 좁은 화면에서 두 줄로 접힌다. 마실 수 있는 것과 없는 것은 따로 읽혀야 한다.
+ * ✕ 같은 기호를 쓰지 않는다.
+ *   고령 환자가 기호를 "금지"로 읽는다는 보장이 없고,
+ *   스크린리더는 "곱하기"로 읽거나 건너뛴다 (WCAG 1.1.1).
+ *   의미는 기호가 아니라 말에 담는다.
+ *
+ * "~도 안 됩니다" 인 이유
+ *   이 목록의 핵심은 "껌·사탕은 음식이 아니니 괜찮겠지" 를 막는 것이다.
+ *   "도" 가 그 오해를 정면으로 짚는다.
  */
-function allowedLine(allowed: string[]): string {
-  return `${allowed.join(" · ")}만 가능합니다`;
-}
-
-function forbiddenLine(forbidden: string[]): string | null {
-  return forbidden.length === 0 ? null : `✕ ${forbidden.join(" ")}`;
+function itemsLine(template: string, items: string[]): string {
+  return template.replace("{items}", items.join(", "));
 }
 
 function resolveLocation(ruleset: ExamRuleset, locationId?: string): string {
@@ -194,10 +196,11 @@ export function buildTimeline(
   ) {
     fastingNotes.push(fasting.note);
   }
-  fastingNotes.push(allowedLine(fasting.allowed));
+  fastingNotes.push(itemsLine(fasting.allowed_text, fasting.allowed));
 
-  const forbidden = forbiddenLine(fasting.forbidden);
-  if (forbidden) fastingNotes.push(forbidden);
+  if (fasting.forbidden.length > 0) {
+    fastingNotes.push(itemsLine(fasting.forbidden_text, fasting.forbidden));
+  }
 
   if (fasting.allowed_note) fastingNotes.push(fasting.allowed_note);
 
