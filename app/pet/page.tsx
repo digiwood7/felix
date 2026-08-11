@@ -34,24 +34,27 @@ export default async function TimelineScreen({
   const examDay = timeline[timeline.length - 1];
 
   return (
-    <main className="flex-1 px-5 py-6">
+    <main className="flex-1 px-4 py-5">
       {/* 잘못 입력했으면 여기서 알아차려야 한다. 전부가 틀어지기 때문이다 */}
-      <header className="mb-5 flex items-baseline justify-between gap-3">
-        <p className="text-[1.06rem] font-bold text-slate-900">
-          {formatReservationLabel(
-            examDay.date,
-            examDay.weekday,
-            reservation.hour,
-            reservation.minute,
-          )}{" "}
-          예약
-        </p>
-        <Link
-          href="/"
-          className="shrink-0 text-[1rem] text-slate-600 underline underline-offset-4"
-        >
-          다시 입력
-        </Link>
+      <header className="mb-5 rounded-2xl bg-slate-100 px-4 py-3">
+        <p className="text-[0.94rem] font-medium text-slate-700">검사 예약</p>
+        <div className="mt-0.5 flex items-baseline justify-between gap-3">
+          <p className="text-[1.29rem] font-bold text-slate-900">
+            {formatReservationLabel(
+              examDay.date,
+              examDay.weekday,
+              reservation.hour,
+              reservation.minute,
+            )}
+          </p>
+          {/* 터치 영역 48px 이상 (PRD §13). 음수 마진으로 시각적 여백은 유지한다 */}
+          <Link
+            href="/"
+            className="-my-3 -mr-2 flex min-h-[48px] shrink-0 items-center px-2 text-[1rem] font-medium text-slate-700 underline underline-offset-4"
+          >
+            다시 입력
+          </Link>
+        </div>
       </header>
 
       <Timeline timeline={timeline} />
