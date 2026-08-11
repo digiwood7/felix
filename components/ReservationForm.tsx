@@ -29,16 +29,44 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
   const [minute, setMinute] = useState<number | null>(null);
   const [locationId, setLocationId] = useState<string | null>(null);
   const [today, setToday] = useState("");
+  const [restored, setRestored] = useState(false);
 
-  // 오늘 날짜는 마운트 후에 넣는다. 서버와 클라이언트의 날짜가 어긋나
-  // 하이드레이션이 깨지는 것을 피한다
+  // 오늘 날짜와 지난 입력은 마운트 후에 넣는다.
+  // 서버와 클라이언트가 달라져 하이드레이션이 깨지는 것을 피한다
   useEffect(() => {
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, "0");
-    setToday(
-      `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
-    );
+    const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    setToday(todayStr);
+
+    const saved = loadSaved();
+    if (!saved) return;
+
+    if (saved.locationId) setLocationId(saved.locationId);
+    if (typeof saved.hour === "number") setHour(saved.hour);
+    if (typeof saved.minute === "number") setMinute(saved.minute);
+
+    // 지난 검사의 날짜는 되살리지 않는다.
+    // 몇 달 뒤 추적 검사로 다시 왔을 때 옛 날짜가 채워져 있으면,
+    // 환자가 알아채지 못하고 그대로 눌러 지나간 날짜의 일정을 보게 된다.
+    // 건물과 시간은 대개 그대로라 남긴다.
+    if (saved.date && saved.date >= todayStr) setDate(saved.date);
+
+    setRestored(true);
   }, []);
+
+  function clearSaved() {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // 사파리 비공개 모드 등에서 막힐 수 있다. 화면은 그대로 지운다
+    }
+    setDate("");
+    setHour(null);
+    setMinute(null);
+    setLocationId(null);
+    setRestored(false);
+  }
 
   const ready = date !== "" && hour !== null && minute !== null && locationId;
 
@@ -51,11 +79,35 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
       hour: hour!,
       minute: minute!,
     });
+
+    // 실제로 쓴 값만 남긴다. 서버가 아니라 이 기기에만 저장된다
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ date, hour, minute, locationId }),
+      );
+    } catch {
+      // 저장에 실패해도 흐름을 막지 않는다
+    }
+
     router.push(`/pet?t=${t}&b=${locationId}`);
   }
 
   return (
     <div className="flex flex-col gap-7">
+      {/* 값이 미리 채워진 이유를 밝힌다. 모르고 그대로 누르면 안 된다 */}
+      {restored && (
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl bg-slate-100 px-4 py-3 text-[1.06rem] text-slate-700">
+          지난번에 선택하신 내용을 불러왔습니다
+          <button
+            type="button"
+            onClick={clearSaved}
+            className="min-h-[44px] font-bold text-slate-900 underline underline-offset-4"
+          >
+            지우고 새로 선택
+          </button>
+        </p>
+      )}
       {/* 안내지의 "예약일시" 와 같은 낱말을 쓴다.
           "검사 시간" 은 안내지에서 소요 시간이라는 뜻으로 쓰이므로 피한다 */}
       <Section step={1} title="예약 날짜">
@@ -111,10 +163,10 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
         />
       </Section>
 
-      {/* PRD §11 필수 표기 — 입력 항목 바로 아래에 둔다 */}
+      {/* PRD §11 필수 표기 — 문구를 고치지 않는다. 뒤에 사실만 덧붙인다 */}
       <p className="rounded-xl bg-slate-100 px-4 py-3 text-[1.06rem] leading-snug text-slate-700">
         이름·등록번호 등 개인정보는 입력받지 않으며, 어떤 정보도 서버에 저장되지
-        않습니다.
+        않습니다. 선택하신 날짜와 시간은 이 기기에만 남습니다.
       </p>
 
       <button
@@ -134,6 +186,34 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
       )}
     </div>
   );
+}
+
+/**
+ * 마지막 선택을 이 기기에만 남긴다.
+ *
+ * 안내지를 잃어버리면 날짜·시간을 알 길이 없어 화면을 아예 못 쓴다.
+ * 한 번 넣어 두면 다음부터는 다시 찾지 않아도 된다.
+ *
+ * 서버가 아니라 브라우저 저장소이므로 "어떤 정보도 서버에 저장되지 않습니다"
+ * (PRD §11) 는 그대로 참이다. 개인 식별 정보도 들어가지 않는다.
+ */
+const STORAGE_KEY = "pet-time:last-reservation";
+
+interface SavedReservation {
+  date?: string;
+  hour?: number;
+  minute?: number;
+  locationId?: string;
+}
+
+function loadSaved(): SavedReservation | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as SavedReservation) : null;
+  } catch {
+    // 비공개 모드이거나 값이 깨졌다. 저장이 없는 것으로 본다
+    return null;
+  }
 }
 
 /** PET 검사가 실제로 잡히는 시간대 (8~17시) */
