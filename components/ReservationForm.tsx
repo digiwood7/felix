@@ -111,25 +111,7 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
       {/* 안내지의 "예약일시" 와 같은 낱말을 쓴다.
           "검사 시간" 은 안내지에서 소요 시간이라는 뜻으로 쓰이므로 피한다 */}
       <Section step={1} title="예약 날짜">
-        <input
-          type="date"
-          value={date}
-          min={today || undefined}
-          onChange={(e) => setDate(e.target.value)}
-          aria-label="예약 날짜"
-          aria-describedby={date ? undefined : "date-hint"}
-          // 폭을 내용에 맞게 제한한다. 화면 끝까지 늘리면 무엇을 눌러야 할지
-          // 오히려 흐려지고, iOS 에서는 내용 최소 너비와 부딪혀 가로로 넘친다.
-          // appearance-none · min-w-0 은 그 최소 너비 계산을 끄기 위한 것이다.
-          className="block min-h-[56px] w-full min-w-0 max-w-[17rem] appearance-none rounded-xl border-2 border-slate-500 px-4 text-[1.24rem] font-bold text-slate-900"
-        />
-
-        {/* 빈 칸은 눌러야 하는 곳으로 보이지 않는다. 고를 때까지만 알려 준다 */}
-        {!date && (
-          <p id="date-hint" className="mt-2 text-[1.06rem] text-slate-600">
-            위 칸을 눌러 연도 · 월 · 일을 선택하세요
-          </p>
-        )}
+        <DateField value={date} min={today} onChange={setDate} />
       </Section>
 
       <Section step={2} title="예약 시간">
@@ -232,6 +214,67 @@ const HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
 
 /** 실제 예약은 08:25 처럼 5분 단위로 잡힌다 */
 const MINUTES = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
+
+/**
+ * 날짜 입력.
+ *
+ * 브라우저가 그려 주는 글자에 기대지 않고 직접 그린다.
+ * iOS Safari 는 appearance:none 을 주면 칸 안의 글자를 아예 지워 버리고,
+ * 그 속성을 빼면 이번에는 내용 최소 너비 때문에 가로로 넘친다.
+ * 둘 중 하나를 고르는 대신, 보이는 부분은 우리가 그리고
+ * 실제 input 은 투명하게 겹쳐 둔다. 눌리는 것은 input 이라 달력은 그대로 뜬다.
+ *
+ * 박스는 글자만큼만 차지한다(w-fit). 화면 끝까지 늘리면 배경처럼 보여
+ * 눌러야 할 곳이라는 것이 흐려진다.
+ */
+function DateField({
+  value,
+  min,
+  onChange,
+}: {
+  value: string;
+  min: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="relative w-fit rounded-xl border-2 border-slate-500 focus-within:ring-4 focus-within:ring-slate-300">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none flex min-h-[56px] items-center gap-3 px-4"
+      >
+        <span
+          className={`text-[1.24rem] font-bold ${value ? "text-slate-900" : "text-slate-500"}`}
+        >
+          {value ? formatKoreanDate(value) : "연도. 월. 일."}
+        </span>
+        <svg
+          viewBox="0 0 24 24"
+          className="h-6 w-6 shrink-0 text-slate-600"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <rect x="3" y="5" width="18" height="16" rx="2" />
+          <path d="M3 10h18M8 3v4M16 3v4" />
+        </svg>
+      </div>
+
+      <input
+        type="date"
+        value={value}
+        min={min || undefined}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label="예약 날짜"
+        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+      />
+    </div>
+  );
+}
+
+/** "2026-08-06" → "2026년 8월 6일" */
+function formatKoreanDate(value: string): string {
+  return `${Number(value.slice(0, 4))}년 ${Number(value.slice(5, 7))}월 ${Number(value.slice(8, 10))}일`;
+}
 
 function Section({
   step,
