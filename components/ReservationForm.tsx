@@ -117,11 +117,19 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
           min={today || undefined}
           onChange={(e) => setDate(e.target.value)}
           aria-label="예약 날짜"
-          // iOS Safari 의 date 입력은 내용 폭만큼 최소 너비를 가지려 해서
-          // 컨테이너를 밀어내고 가로 스크롤을 만든다.
-          // appearance-none 으로 기본 크기 계산을 끄고, min-w-0 으로 줄어들 수 있게 한다.
-          className="block min-h-[56px] w-full min-w-0 max-w-full appearance-none rounded-xl border-2 border-slate-500 px-4 text-[1.24rem] font-bold text-slate-900"
+          aria-describedby={date ? undefined : "date-hint"}
+          // 폭을 내용에 맞게 제한한다. 화면 끝까지 늘리면 무엇을 눌러야 할지
+          // 오히려 흐려지고, iOS 에서는 내용 최소 너비와 부딪혀 가로로 넘친다.
+          // appearance-none · min-w-0 은 그 최소 너비 계산을 끄기 위한 것이다.
+          className="block min-h-[56px] w-full min-w-0 max-w-[17rem] appearance-none rounded-xl border-2 border-slate-500 px-4 text-[1.24rem] font-bold text-slate-900"
         />
+
+        {/* 빈 칸은 눌러야 하는 곳으로 보이지 않는다. 고를 때까지만 알려 준다 */}
+        {!date && (
+          <p id="date-hint" className="mt-2 text-[1.06rem] text-slate-600">
+            위 칸을 눌러 연도 · 월 · 일을 선택하세요
+          </p>
+        )}
       </Section>
 
       <Section step={2} title="예약 시간">
