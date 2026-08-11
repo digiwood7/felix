@@ -130,11 +130,18 @@ function formatDuration(totalMinutes: number): string {
   return `${hours}시간 ${minutes}분`;
 }
 
-/** 허용 · 금지 음료를 한 줄로 합친다 */
-function drinkLine(allowed: string[], forbidden: string[]): string {
-  const head = `${allowed.join(" · ")}만 가능`;
-  if (forbidden.length === 0) return head;
-  return `${head} · ✕ ${forbidden.join(" ")}`;
+/**
+ * 허용 음료와 금지 음료를 각각 한 줄로 만든다.
+ *
+ * 한 줄로 합치면 "물(생수)만 가능 · ✕ 보리차 커피 우유 주스 껌 사탕" 이 되어
+ * 좁은 화면에서 두 줄로 접힌다. 마실 수 있는 것과 없는 것은 따로 읽혀야 한다.
+ */
+function allowedLine(allowed: string[]): string {
+  return `${allowed.join(" · ")}만 가능합니다`;
+}
+
+function forbiddenLine(forbidden: string[]): string | null {
+  return forbidden.length === 0 ? null : `✕ ${forbidden.join(" ")}`;
 }
 
 function resolveLocation(ruleset: ExamRuleset, locationId?: string): string {
@@ -187,7 +194,11 @@ export function buildTimeline(
   ) {
     fastingNotes.push(fasting.note);
   }
-  fastingNotes.push(drinkLine(fasting.allowed, fasting.forbidden));
+  fastingNotes.push(allowedLine(fasting.allowed));
+
+  const forbidden = forbiddenLine(fasting.forbidden);
+  if (forbidden) fastingNotes.push(forbidden);
+
   if (fasting.allowed_note) fastingNotes.push(fasting.allowed_note);
 
   placed.push({

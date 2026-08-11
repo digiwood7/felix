@@ -246,11 +246,16 @@ describe("8. 문구는 룰셋에서 읽는다", () => {
     expect(find(timeline, "fasting").text).toBe(f18FdgPet.fasting.text);
   });
 
-  it("금식 보조에 허용 · 금지 음료와 다른 검사 단서가 들어간다", () => {
-    const notes = find(timeline, "fasting").notes.join("\n");
-    expect(notes).toContain("물(생수)");
-    expect(notes).toContain("보리차");
-    expect(notes).toContain(f18FdgPet.fasting.allowed_note!);
+  it("허용 음료와 금지 음료가 각각 다른 줄이다", () => {
+    const notes = find(timeline, "fasting").notes;
+    expect(notes).toContain("물(생수)만 가능합니다");
+    expect(notes).toContain("✕ 보리차 커피 우유 주스 껌 사탕");
+  });
+
+  it("금식 보조에 다른 검사 단서가 들어간다", () => {
+    expect(find(timeline, "fasting").notes).toContain(
+      f18FdgPet.fasting.allowed_note,
+    );
   });
 
   it("도착 지시문에 선택한 건물이 들어간다", () => {

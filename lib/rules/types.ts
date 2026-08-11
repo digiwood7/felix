@@ -134,6 +134,13 @@ export interface ExamRuleset {
   /** 계산 기준 타임존. 기기 로컬 타임존을 따르지 않는다 (PRD §9.2) */
   timezone: string;
   duration_min: number;
+  /**
+   * 타임라인 첫머리 한 줄 안내.
+   *
+   * 설명 없이 항목부터 나열하면 환자는 무엇을 보고 있는지 모른 채
+   * 읽기 시작한다. 목록이 무엇인지 먼저 말해 준다.
+   */
+  intro: string;
   locations: Locations;
   arrival: Arrival;
   exam: Exam;

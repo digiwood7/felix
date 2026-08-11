@@ -57,6 +57,11 @@ export default async function TimelineScreen({
         </div>
       </header>
 
+      {/* 무엇을 보고 있는지 먼저 말해 준다. 목록부터 들이밀지 않는다 */}
+      <p className="mb-5 text-[1.06rem] leading-snug text-slate-700">
+        {f18FdgPet.intro}
+      </p>
+
       <Timeline timeline={timeline} />
     </main>
   );
