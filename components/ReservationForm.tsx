@@ -115,10 +115,13 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
       </Section>
 
       <Section step={2} title="예약 시간">
+        {/* 시와 분의 열 수를 맞춘다. 열이 다르면 글자 크기가 같아도
+            버튼 폭이 달라져(67px vs 86px) 글씨가 달라 보인다.
+            4열 쪽이 버튼도 커서 누르기 쉽다 */}
         <Choices
           name="hour"
           legend="시"
-          columns="grid-cols-5"
+          columns="grid-cols-4"
           options={HOURS.map((h) => ({ value: h, label: `${h}시` }))}
           selected={hour}
           onSelect={setHour}

@@ -51,8 +51,23 @@ describe("룰셋 — 현행 실무 기준값", () => {
   });
 
   it("혈당 기준 200은 도착 항목의 사실로 적혀 있다", () => {
-    expect(f18FdgPet.arrival.note).toContain("혈당");
-    expect(f18FdgPet.arrival.note).toContain("200");
+    const notes = (f18FdgPet.arrival.notes ?? []).join("\n");
+    expect(notes).toContain("혈당");
+    expect(notes).toContain("200");
+  });
+
+  // "·" 로 이어 붙이면 좁은 화면에서 문장 한가운데가 잘린다
+  it("보조 설명은 한 줄에 한 문장씩이다", () => {
+    const all = [
+      ...(f18FdgPet.arrival.notes ?? []),
+      f18FdgPet.fasting.note,
+      f18FdgPet.fasting.allowed_note,
+      ...f18FdgPet.conditional.map((c) => c.after_text),
+    ].filter(Boolean) as string[];
+
+    for (const note of all) {
+      expect(note).not.toContain(" · ");
+    }
   });
 
   it("연락처는 1599-3114", () => {

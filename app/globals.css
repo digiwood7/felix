@@ -42,4 +42,11 @@ body {
    */
   word-break: keep-all;
   overflow-wrap: break-word;
+
+  /**
+   * 마지막 줄에 낱말 하나만 떨어지는 것을 막는다.
+   * "…드시기" / "바랍니다" 처럼 끊기면 문장이 두 번 읽힌다.
+   * 미지원 브라우저는 그냥 무시하므로 안전하다.
+   */
+  text-wrap: pretty;
 }

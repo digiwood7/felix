@@ -256,7 +256,7 @@ export function buildTimeline(
         "{location}",
         resolveLocation(ruleset, input.locationId),
       ),
-      notes: arrival.note ? [arrival.note] : [],
+      notes: arrival.notes ?? [],
     },
   });
 

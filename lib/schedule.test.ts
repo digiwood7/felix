@@ -271,7 +271,7 @@ describe("8. 문구는 룰셋에서 읽는다", () => {
   });
 
   it("도착 보조에 혈당 측정 사실이 들어간다", () => {
-    expect(find(timeline, "arrival").notes).toContain(f18FdgPet.arrival.note);
+    expect(find(timeline, "arrival").notes).toEqual(f18FdgPet.arrival.notes);
   });
 
   it("검사 소요시간이 80분 → 1시간 20분으로 표기된다", () => {
