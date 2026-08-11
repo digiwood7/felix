@@ -65,10 +65,6 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
           aria-label="검사 날짜"
           className="min-h-[56px] w-full rounded-xl border-2 border-slate-300 px-4 text-[1.24rem] font-bold text-slate-900"
         />
-        <div className="mt-2 flex gap-2">
-          <QuickDate label="오늘" offset={0} today={today} onPick={setDate} />
-          <QuickDate label="내일" offset={1} today={today} onPick={setDate} />
-        </div>
       </Section>
 
       <Section step={2} title="예약 시각">
@@ -137,8 +133,8 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
   );
 }
 
-/** PET 검사가 잡히는 시간대 */
-const HOURS = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
+/** PET 검사가 실제로 잡히는 시간대 (8~17시) */
+const HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
 
 /** 실제 예약은 08:25 처럼 5분 단위로 잡힌다 */
 const MINUTES = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
@@ -162,35 +158,6 @@ function Section({
       </h2>
       {children}
     </section>
-  );
-}
-
-function QuickDate({
-  label,
-  offset,
-  today,
-  onPick,
-}: {
-  label: string;
-  offset: number;
-  today: string;
-  onPick: (v: string) => void;
-}) {
-  if (!today) return null;
-
-  const d = new Date(`${today}T00:00`);
-  d.setDate(d.getDate() + offset);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-
-  return (
-    <button
-      type="button"
-      onClick={() => onPick(value)}
-      className="min-h-[48px] rounded-xl border-2 border-slate-300 px-5 text-[1.06rem] font-bold text-slate-700"
-    >
-      {label}
-    </button>
   );
 }
 

@@ -19,8 +19,12 @@
     "hint": "예약 안내문에 적혀 있습니다",
     "fallback_text": "지하 1층 핵의학과",
     "options": [
-      { "id": "cancer", "label": "암병원", "text": "암병원 지하 1층 핵의학과" },
-      { "id": "main", "label": "본관", "text": "본관 지하 1층 핵의학과" }
+      {
+        "id": "cancer",
+        "label": "암병원 지하1층",
+        "text": "암병원 지하 1층 핵의학과"
+      },
+      { "id": "main", "label": "본관 지하1층", "text": "본관 지하 1층 핵의학과" }
     ]
   },
 

@@ -29,10 +29,10 @@ export default async function InputScreen({
     <main className="flex-1 px-4 pt-6 pb-8">
       <header className="mb-6">
         <h1 className="text-[1.65rem] leading-tight font-extrabold text-slate-900">
-          검사 준비 안내
+          핵의학과 PET 검사준비안내
         </h1>
         <p className="mt-2 text-[1.12rem] leading-relaxed text-slate-700">
-          예약하신 날짜와 시각을 입력하면 준비 일정을 알려드립니다
+          검사 예약날짜와 시간을 입력하면 준비 일정을 알려드립니다.
         </p>
       </header>
 
