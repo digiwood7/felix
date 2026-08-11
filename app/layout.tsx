@@ -7,8 +7,8 @@ import { isMaintenance } from "@/lib/serviceStatus";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "검사 준비 안내",
-  description: "예약 시각에 맞춘 검사 준비 일정을 확인합니다.",
+  title: "핵의학과 PET 검사 준비 안내",
+  description: "예약 시간에 맞춘 검사 준비 일정을 확인합니다.",
   // 병원 브랜드를 서비스 아이덴티티로 쓰지 않는다 (PRD §6.5)
 };
 

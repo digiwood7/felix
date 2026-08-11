@@ -63,11 +63,12 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
           min={today || undefined}
           onChange={(e) => setDate(e.target.value)}
           aria-label="검사 날짜"
-          className="min-h-[56px] w-full rounded-xl border-2 border-slate-300 px-4 text-[1.24rem] font-bold text-slate-900"
+          className="min-h-[56px] w-full rounded-xl border-2 border-slate-500 px-4 text-[1.24rem] font-bold text-slate-900"
         />
       </Section>
 
-      <Section step={2} title="예약 시각">
+      {/* 안내지가 "예약시간" 을 쓴다. 화면 전체에서 "시간" 으로 통일한다 */}
+      <Section step={2} title="예약 시간">
         <Choices
           name="hour"
           legend="시"
@@ -124,9 +125,10 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
         준비 일정 보기
       </button>
 
+      {/* 화면의 단계 이름과 같은 낱말을 쓴다. "장소" 라고 하면 무엇을 덜 골랐는지 헷갈린다 */}
       {!ready && (
-        <p aria-live="polite" className="-mt-4 text-[1.06rem] text-slate-600">
-          날짜 · 시각 · 장소를 모두 선택해 주세요
+        <p aria-live="polite" className="-mt-4 text-[1.06rem] text-slate-700">
+          날짜 · 시간 · 건물을 모두 선택해 주세요
         </p>
       )}
     </div>
@@ -149,9 +151,11 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
+    // 구획 구분 — 타임라인의 날짜 머리와 같은 형태로 맞춘다.
+    // 여백만으로 나누면 세 단계가 한 덩어리로 읽힌다.
     <section>
-      <h2 className="mb-2 flex items-center gap-2">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-900 text-[1rem] font-bold text-white">
+      <h2 className="mb-3 flex items-center gap-2 border-b-2 border-slate-900 pb-2">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-900 text-[1.06rem] font-bold text-white">
           {step}
         </span>
         <span className="text-[1.24rem] font-bold text-slate-900">{title}</span>
@@ -190,10 +194,13 @@ function Choices<T extends string | number>({
           return (
             <label
               key={String(o.value)}
+              // 테두리는 slate-500 이상이어야 한다.
+              // slate-300 은 흰 배경 대비 1.5:1 로 WCAG 1.4.11(비텍스트 3:1) 미달이다.
+              // 고령 사용자에게는 버튼의 경계가 보이지 않는 것과 같다.
               className={`flex min-h-[52px] cursor-pointer items-center justify-center rounded-xl border-2 text-[1.12rem] font-bold ${
                 on
                   ? "border-slate-900 bg-slate-900 text-white"
-                  : "border-slate-300 bg-white text-slate-800"
+                  : "border-slate-500 bg-white text-slate-800"
               }`}
             >
               <input
