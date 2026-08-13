@@ -8,10 +8,8 @@ const LEVELS: Level[] = ["ok", "tell", "call"];
 
 const TRIAGE_CONDITIONS: TriageCondition[] = [
   "fasting.broken",
-  "intake.non_water",
-  "medication.taken",
   "diabetes.after_cutoff",
-  "exercise.yes",
+  "weight.over_limit",
 ];
 
 /**
@@ -46,8 +44,7 @@ describe("룰셋 — 현행 실무 기준값", () => {
   });
 
   it("체중 기준은 140kg", () => {
-    const weight = f18FdgPet.flags.find((f) => f.id === "weight");
-    expect(weight?.q).toContain("140kg");
+    expect(f18FdgPet.questions.body.weight.limit).toBe(140);
   });
 
   it("혈당 기준 200은 도착 항목의 사실로 적혀 있다", () => {
@@ -120,9 +117,9 @@ describe("룰셋 — 안전 불변조건", () => {
 
   it("flags 는 환자가 스스로 아는 것만 묻는다", () => {
     expect(f18FdgPet.flags.map((f) => f.id).sort()).toEqual([
-      "claustro",
+      "lactation",
+      "menstruation",
       "pregnancy",
-      "weight",
     ]);
   });
 });
@@ -162,18 +159,55 @@ describe("룰셋 — 판정이 아닌 행동 지시", () => {
   });
 });
 
-describe("룰셋 — 자유 입력 대체", () => {
-  it("섭취 · 복약 선택지가 정의되어 있다", () => {
-    expect(f18FdgPet.intake_categories.length).toBeGreaterThan(0);
-    expect(f18FdgPet.medication_categories.length).toBeGreaterThan(0);
+/**
+ * 문답은 접수에서 실제로 반복되는 4가지다 (2026-08-13 확인).
+ *   금식 / 당뇨 / 키 · 몸무게 / 만 50세 이하 여성의 임신 · 수유 · 생리
+ *
+ * 접수에서 묻지 않는 항목을 물으면 접수 시간이 줄지 않는다.
+ * 이 서비스의 목적은 안내문 디지털화가 아니라 반복업무 감소다.
+ */
+describe("룰셋 — 문답", () => {
+  it("네 문항의 문구가 전부 정의되어 있다", () => {
+    const q = f18FdgPet.questions;
+    expect(q.fasting.ask).toBeTruthy();
+    expect(q.body.ask).toBeTruthy();
+    expect(q.female.ask).toBeTruthy();
+    // 당뇨 질문은 conditional 에서 읽는다. 두 벌이 되면 언젠가 어긋난다
+    expect(
+      f18FdgPet.conditional.find((c) => c.id === "diabetes")?.ask,
+    ).toBeTruthy();
   });
 
-  it("카테고리 id 가 중복되지 않는다", () => {
-    const ids = [
-      ...f18FdgPet.intake_categories,
-      ...f18FdgPet.medication_categories,
-    ].map((c) => c.id);
-    expect(new Set(ids).size).toBe(ids.length);
+  it("키 · 몸무게는 입력 범위가 정의되어 있다", () => {
+    for (const field of [
+      f18FdgPet.questions.body.height,
+      f18FdgPet.questions.body.weight,
+    ]) {
+      expect(field.min).toBeGreaterThan(0);
+      expect(field.max).toBeGreaterThan(field.min);
+    }
+  });
+
+  // 상한을 넘는 값을 입력할 수 없으면 그 환자는 전화 안내를 못 받는다
+  it("몸무게 입력 범위가 체중 상한을 넘어선다", () => {
+    const weight = f18FdgPet.questions.body.weight;
+    expect(weight.max).toBeGreaterThan(weight.limit!);
+  });
+
+  // 모르면 모른다고 답할 수 있어야 한다. 억지로 채우면 어림값이 들어오고,
+  // 그 값으로 체중 상한 판정이 돌아간다
+  it("키 · 몸무게를 모른다고 답할 수 있다", () => {
+    expect(f18FdgPet.questions.body.unknown_label).toBeTruthy();
+    expect(f18FdgPet.questions.body.hint).toContain("접수");
+  });
+
+  it("생리 일수는 7일까지 고를 수 있다", () => {
+    expect(f18FdgPet.questions.female.day_max).toBe(7);
+  });
+
+  // "안 물어봤다" 와 "물어봤고 해당 없다" 는 접수 직원에게 다른 정보다
+  it("여성 문항에 해당 없음 선택지가 있다", () => {
+    expect(f18FdgPet.questions.female.none_label).toBeTruthy();
   });
 });
 

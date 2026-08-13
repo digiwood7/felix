@@ -16,7 +16,11 @@ import type { Answers } from "./questions";
  * 서버로는 보내지 않는다 (PRD §8 F2).
  */
 
-const KEY = "pet-time:answers";
+/**
+ * 문항이 바뀌면 키도 바꾼다. 지난 형태로 저장된 값이 남아 있으면
+ * 새 카드가 옛 응답을 읽어 엉뚱한 내용을 띄운다.
+ */
+const KEY = "pet-time:answers:v2";
 
 export function saveAnswers(answers: Answers): void {
   try {

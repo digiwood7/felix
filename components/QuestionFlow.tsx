@@ -4,22 +4,27 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { saveAnswers } from "@/lib/answers";
-import type {
-  Answers,
-  DayRef,
-  Question,
-  TimeAnswer,
+import type { Answers, DayRef, Question, TimeAnswer } from "@/lib/questions";
+import {
+  MENSTRUATION_ID,
+  NONE_ID,
+  emptyAnswers,
+  isAnswered,
+  isValidNumber,
 } from "@/lib/questions";
-import { emptyAnswers } from "@/lib/questions";
+import type { NumberField, TimeCopy } from "@/lib/rules/types";
 
 /**
  * S3 문답 — PRD §8 F2 · §10
  *
  * 1문 1화면. 한 화면에 하나만 물어야 고령 사용자가 놓치지 않는다.
- * 문항 정의는 lib/questions.ts 에 있다. 여기서는 그리기만 한다.
+ * 문항 정의는 lib/questions.ts 에, 문구는 룰셋에 있다.
  *
- * 자유 텍스트 입력이 하나도 없다. 선택지는 전부 룰셋에서 온다.
- * 응답은 서버로 보내지 않는다.
+ * 화면 언어는 S1 입력 화면과 같다 — 같은 크기의 버튼, 같은 테두리,
+ * 고른 것은 검게 채운다. 두 화면이 다른 서비스처럼 보이면 환자는
+ * 중간에 멈춘다.
+ *
+ * 자유 텍스트 입력이 하나도 없다. 응답은 서버로 보내지 않는다.
  */
 export default function QuestionFlow({
   questions,
@@ -40,9 +45,17 @@ export default function QuestionFlow({
     else setStep(step - 1);
   }
 
-  function goNext() {
+  /**
+   * 방금 고른 답을 인자로 받는다.
+   *
+   * 한 번 누르면 바로 넘어가는 버튼은, 눌린 순간의 상태를 그대로 넘겨야 한다.
+   * setState 는 다음 렌더에 반영되므로 여기서 answers 를 읽으면
+   * 한 박자 전 값을 보고 "아직 안 골랐다" 며 멈춘다.
+   */
+  function goNext(current: Answers = answers) {
+    if (!isAnswered(question, current)) return;
     if (isLast) {
-      saveAnswers(answers);
+      saveAnswers(current);
       router.push(`/pet/card${window.location.search}`);
     } else {
       setStep(step + 1);
@@ -65,6 +78,7 @@ export default function QuestionFlow({
 
         <div className="mt-5">
           <Body
+            key={question.id}
             question={question}
             answers={answers}
             onChange={setAnswers}
@@ -83,7 +97,7 @@ export default function QuestionFlow({
         </button>
         <button
           type="button"
-          onClick={goNext}
+          onClick={() => goNext()}
           disabled={!isAnswered(question, answers)}
           className="min-h-[60px] flex-1 rounded-2xl bg-slate-900 text-[1.24rem] font-bold text-white disabled:bg-slate-300 disabled:text-slate-500"
         >
@@ -122,29 +136,6 @@ function Progress({ current, total }: { current: number; total: number }) {
   );
 }
 
-/** 다음으로 넘어갈 수 있는지 */
-function isAnswered(question: Question, a: Answers): boolean {
-  switch (question.id) {
-    case "lastMeal":
-      return a.lastMeal !== null;
-    case "intake":
-      return a.intake !== null;
-    case "medication":
-      return (
-        a.medication === null ||
-        (a.medication.categories.length > 0 && a.medication.time !== null)
-      );
-    case "diabetes":
-      return true; // 아니오가 기본값이다
-    case "exercise":
-      return a.exercise !== null;
-    case "flags":
-      return true; // 해당 없음이 정상이다
-    default:
-      return true;
-  }
-}
-
 function Body({
   question,
   answers,
@@ -154,185 +145,266 @@ function Body({
   question: Question;
   answers: Answers;
   onChange: (a: Answers) => void;
-  onAdvance: () => void;
+  /** 방금 고른 답을 함께 넘긴다. 상태 반영을 기다리지 않기 위해서다 */
+  onAdvance: (a: Answers) => void;
 }) {
-  const [showDetail, setShowDetail] = useState(false);
+  /** 고르자마자 넘어가는 버튼 — 한 번 누르는 것으로 끝나는 답에만 쓴다 */
+  function answerAndAdvance(next: Answers) {
+    onChange(next);
+    onAdvance(next);
+  }
 
-  switch (question.kind) {
-    case "time":
-      return (
-        <TimePicker
-          value={answers.lastMeal}
-          onChange={(t) => onChange({ ...answers, lastMeal: t })}
-        />
-      );
-
-    case "optional_categories": {
-      const has = answers.intake.length > 0 || showDetail;
+  switch (question.id) {
+    /**
+     * "네" 가 금식을 지켰다는 뜻이다. 지켰으면 더 물을 것이 없으므로
+     * 바로 넘어가고, 못 지켰을 때만 마지막으로 드신 때를 묻는다.
+     */
+    case "fasting": {
+      const broken = answers.fasting?.kept === false;
       return (
         <>
           <TwoChoice
-            noneLabel={question.noneLabel!}
-            someLabel={question.someLabel!}
-            isNone={!has}
-            onNone={() => {
-              setShowDetail(false);
-              onChange({ ...answers, intake: [] });
-              onAdvance();
-            }}
-            onSome={() => setShowDetail(true)}
+            yesLabel={question.yesLabel}
+            noLabel={question.noLabel}
+            isYes={answers.fasting?.kept === true}
+            isNo={broken}
+            onYes={() =>
+              answerAndAdvance({
+                ...answers,
+                fasting: { kept: true, time: null },
+              })
+            }
+            onNo={() =>
+              onChange({
+                ...answers,
+                fasting: { kept: false, time: answers.fasting?.time ?? null },
+              })
+            }
           />
-          {has && (
-            <MultiSelect
-              className="mt-4"
-              options={question.options!}
-              selected={answers.intake}
-              onToggle={(id) =>
-                onChange({ ...answers, intake: toggle(answers.intake, id) })
-              }
-            />
+          {broken && (
+            <>
+              <SubTitle>{question.timeTitle}</SubTitle>
+              <TimePicker
+                copy={question.time!}
+                value={answers.fasting?.time ?? null}
+                onChange={(t) =>
+                  onChange({ ...answers, fasting: { kept: false, time: t } })
+                }
+              />
+            </>
           )}
         </>
       );
     }
 
-    case "optional_categories_time": {
-      const med = answers.medication;
+    case "diabetes": {
+      const uses = answers.diabetes?.uses === true;
       return (
         <>
           <TwoChoice
-            noneLabel={question.noneLabel!}
-            someLabel={question.someLabel!}
-            isNone={med === null && !showDetail}
-            onNone={() => {
-              setShowDetail(false);
-              onChange({ ...answers, medication: null });
-              onAdvance();
-            }}
-            onSome={() => {
-              setShowDetail(true);
-              if (!med)
+            yesLabel={question.yesLabel}
+            noLabel={question.noLabel}
+            isYes={uses}
+            isNo={answers.diabetes?.uses === false}
+            onYes={() =>
+              onChange({
+                ...answers,
+                diabetes: { uses: true, time: answers.diabetes?.time ?? null },
+              })
+            }
+            onNo={() =>
+              answerAndAdvance({
+                ...answers,
+                diabetes: { uses: false, time: null },
+              })
+            }
+          />
+          {uses && (
+            <>
+              <SubTitle>{question.timeTitle}</SubTitle>
+              <TimePicker
+                copy={question.time!}
+                value={answers.diabetes?.time ?? null}
+                onChange={(t) =>
+                  onChange({ ...answers, diabetes: { uses: true, time: t } })
+                }
+              />
+            </>
+          )}
+        </>
+      );
+    }
+
+    /**
+     * 모르면 모른다고 답할 수 있다. 억지로 채우게 하면 어림값이 들어오고,
+     * 그 값으로 체중 상한 판정이 돌아간다.
+     */
+    case "body": {
+      const [height, weight] = question.fields!;
+      const unknown = answers.body.unknown;
+      return (
+        <div className="flex flex-col gap-5">
+          <NumberInput
+            field={height}
+            value={answers.body.height}
+            disabled={unknown}
+            onChange={(v) =>
+              onChange({ ...answers, body: { ...answers.body, height: v } })
+            }
+          />
+          <NumberInput
+            field={weight}
+            value={answers.body.weight}
+            disabled={unknown}
+            onChange={(v) =>
+              onChange({ ...answers, body: { ...answers.body, weight: v } })
+            }
+          />
+          {/* 두 입력칸과 같은 간격으로 두면 세 번째 입력칸처럼 읽힌다.
+              이건 "채우기" 가 아니라 "안 채우기" 라서 떼어 놓는다 */}
+          <div className="mt-3">
+            <Toggle
+              label={question.unknownLabel!}
+              checked={unknown}
+              onToggle={() =>
                 onChange({
                   ...answers,
-                  medication: { categories: [], time: null },
-                });
-            }}
+                  body: unknown
+                    ? { ...answers.body, unknown: false }
+                    : { height: null, weight: null, unknown: true },
+                })
+              }
+            />
+          </div>
+        </div>
+      );
+    }
+
+    /**
+     * 나이도 성별도 저장하지 않는다. 이 문항이 해당되는지와,
+     * 해당될 때 고른 항목만 남는다.
+     */
+    case "female": {
+      const applies = answers.female?.applies === true;
+      const checks = answers.female?.checks ?? [];
+      const day = answers.female?.menstrualDay ?? null;
+
+      function setChecks(next: string[]) {
+        onChange({
+          ...answers,
+          female: {
+            applies: true,
+            checks: next,
+            // 생리를 빼면 일수도 함께 지운다. 남겨 두면 고르지 않은 값이 카드에 찍힌다
+            menstrualDay: next.includes(MENSTRUATION_ID) ? day : null,
+          },
+        });
+      }
+
+      return (
+        <>
+          <TwoChoice
+            yesLabel={question.yesLabel}
+            noLabel={question.noLabel}
+            isYes={applies}
+            isNo={answers.female?.applies === false}
+            onYes={() =>
+              onChange({
+                ...answers,
+                female: { applies: true, checks, menstrualDay: day },
+              })
+            }
+            onNo={() =>
+              answerAndAdvance({
+                ...answers,
+                female: { applies: false, checks: [], menstrualDay: null },
+              })
+            }
           />
-          {(med || showDetail) && (
+          {applies && (
             <>
+              <SubTitle>{question.detailTitle}</SubTitle>
               <MultiSelect
-                className="mt-4"
+                stacked
                 options={question.options!}
-                selected={med?.categories ?? []}
-                onToggle={(id) =>
-                  onChange({
-                    ...answers,
-                    medication: {
-                      categories: toggle(med?.categories ?? [], id),
-                      time: med?.time ?? null,
-                    },
-                  })
-                }
+                selected={checks}
+                onToggle={(id) => setChecks(toggle(checks, id))}
               />
-              <p className="mt-5 mb-3 text-[1.18rem] font-bold text-slate-900">
-                {question.timeTitle}
-              </p>
-              <TimePicker
-                value={med?.time ?? null}
-                onChange={(t) =>
-                  onChange({
-                    ...answers,
-                    medication: {
-                      categories: med?.categories ?? [],
-                      time: t,
-                    },
-                  })
-                }
-              />
+              {/* 셋 다 아니라는 답도 답이다. 빈 채로 넘기는 것과 구분한다 */}
+              <div className="mt-2">
+                <Toggle
+                  label={question.noneLabel!}
+                  checked={checks.includes(NONE_ID)}
+                  onToggle={() =>
+                    setChecks(checks.includes(NONE_ID) ? [] : [NONE_ID])
+                  }
+                />
+              </div>
+              {checks.includes(MENSTRUATION_ID) && (
+                <>
+                  <SubTitle>{question.dayTitle}</SubTitle>
+                  <Grid
+                    columns="grid-cols-4"
+                    options={Array.from(
+                      { length: question.dayMax! },
+                      (_, i) => ({
+                        value: i + 1,
+                        label: `${i + 1}${question.dayUnit}`,
+                      }),
+                    )}
+                    selected={day}
+                    onSelect={(v) =>
+                      onChange({
+                        ...answers,
+                        female: {
+                          applies: true,
+                          checks,
+                          menstrualDay: v,
+                        },
+                      })
+                    }
+                  />
+                </>
+              )}
             </>
           )}
         </>
       );
     }
-
-    case "yes_no_time":
-      return (
-        <>
-          <TwoChoice
-            noneLabel={question.noneLabel!}
-            someLabel={question.someLabel!}
-            isNone={answers.diabetes === null && !showDetail}
-            onNone={() => {
-              setShowDetail(false);
-              onChange({ ...answers, diabetes: null });
-              onAdvance();
-            }}
-            onSome={() => setShowDetail(true)}
-          />
-          {(answers.diabetes || showDetail) && (
-            <>
-              <p className="mt-5 mb-3 text-[1.18rem] font-bold text-slate-900">
-                {question.timeTitle}
-              </p>
-              <TimePicker
-                value={answers.diabetes}
-                onChange={(t) => onChange({ ...answers, diabetes: t })}
-              />
-            </>
-          )}
-        </>
-      );
-
-    case "yes_no":
-      return (
-        <TwoChoice
-          noneLabel={question.noneLabel!}
-          someLabel={question.someLabel!}
-          isNone={answers.exercise === false}
-          isSome={answers.exercise === true}
-          onNone={() => {
-            onChange({ ...answers, exercise: false });
-            onAdvance();
-          }}
-          onSome={() => {
-            onChange({ ...answers, exercise: true });
-            onAdvance();
-          }}
-        />
-      );
-
-    case "flags":
-      return (
-        <MultiSelect
-          stacked
-          options={question.options!}
-          selected={answers.flags}
-          onToggle={(id) =>
-            onChange({ ...answers, flags: toggle(answers.flags, id) })
-          }
-        />
-      );
   }
 }
 
-function toggle(list: string[], id: string): string[] {
-  return list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
+function SubTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="mt-6 mb-3 text-[1.18rem] font-bold text-slate-900">
+      {children}
+    </p>
+  );
 }
 
+function toggle(list: string[], id: string): string[] {
+  // "셋 다 해당사항 없음" 과 개별 항목은 같이 설 수 없다
+  const cleaned = list.filter((x) => x !== NONE_ID);
+  return cleaned.includes(id)
+    ? cleaned.filter((x) => x !== id)
+    : [...cleaned, id];
+}
+
+/** 왼쪽이 언제나 긍정("네" · "예") 이다. 화면마다 자리가 바뀌면 잘못 누른다 */
 function TwoChoice({
-  noneLabel,
-  someLabel,
-  isNone,
-  isSome,
-  onNone,
-  onSome,
+  yesLabel,
+  noLabel,
+  isYes,
+  isNo,
+  onYes,
+  onNo,
 }: {
-  noneLabel: string;
-  someLabel: string;
-  isNone: boolean;
-  isSome?: boolean;
-  onNone: () => void;
-  onSome: () => void;
+  yesLabel: string;
+  noLabel: string;
+  isYes: boolean;
+  isNo: boolean;
+  onYes: () => void;
+  onNo: () => void;
 }) {
   const base =
     "min-h-[68px] flex-1 rounded-2xl border-2 text-[1.24rem] font-bold";
@@ -343,21 +415,64 @@ function TwoChoice({
     <div className="flex gap-3">
       <button
         type="button"
-        onClick={onNone}
-        aria-pressed={isNone}
-        className={`${base} ${isNone ? on : off}`}
+        onClick={onYes}
+        aria-pressed={isYes}
+        className={`${base} ${isYes ? on : off}`}
       >
-        {noneLabel}
+        {yesLabel}
       </button>
       <button
         type="button"
-        onClick={onSome}
-        aria-pressed={isSome ?? !isNone}
-        className={`${base} ${(isSome ?? !isNone) ? on : off}`}
+        onClick={onNo}
+        aria-pressed={isNo}
+        className={`${base} ${isNo ? on : off}`}
       >
-        {someLabel}
+        {noLabel}
       </button>
     </div>
+  );
+}
+
+/** 체크 하나짜리. 목록 안의 항목과 같은 모양이라 따로 배우지 않아도 된다 */
+function Toggle({
+  label,
+  checked,
+  onToggle,
+}: {
+  label: string;
+  checked: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <label
+      className={`flex min-h-[60px] cursor-pointer items-center gap-3 rounded-xl border-2 px-4 text-[1.12rem] leading-snug font-bold ${
+        checked
+          ? "border-slate-900 bg-slate-900 text-white"
+          : "border-slate-500 bg-white text-slate-800"
+      }`}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onToggle}
+        className="sr-only"
+      />
+      <CheckBox on={checked} />
+      {label}
+    </label>
+  );
+}
+
+function CheckBox({ on }: { on: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 ${
+        on ? "border-white bg-white text-slate-900" : "border-slate-500"
+      }`}
+    >
+      {on ? "✓" : ""}
+    </span>
   );
 }
 
@@ -365,19 +480,15 @@ function MultiSelect({
   options,
   selected,
   onToggle,
-  className = "",
   stacked = false,
 }: {
   options: { id: string; label: string }[];
   selected: string[];
   onToggle: (id: string) => void;
-  className?: string;
   stacked?: boolean;
 }) {
   return (
-    <div
-      className={`grid gap-2 ${stacked ? "grid-cols-1" : "grid-cols-2"} ${className}`}
-    >
+    <div className={`grid gap-2 ${stacked ? "grid-cols-1" : "grid-cols-2"}`}>
       {options.map((o) => {
         const on = selected.includes(o.id);
         return (
@@ -395,14 +506,7 @@ function MultiSelect({
               onChange={() => onToggle(o.id)}
               className="sr-only"
             />
-            <span
-              aria-hidden="true"
-              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 ${
-                on ? "border-white bg-white text-slate-900" : "border-slate-500"
-              }`}
-            >
-              {on ? "✓" : ""}
-            </span>
+            <CheckBox on={on} />
             {o.label}
           </label>
         );
@@ -411,20 +515,85 @@ function MultiSelect({
   );
 }
 
-const HOURS = Array.from({ length: 24 }, (_, i) => i);
-const MINUTES = [0, 10, 20, 30, 40, 50];
+/**
+ * 숫자를 직접 받는다.
+ *
+ * 자유 텍스트가 아니다 — 숫자판만 뜨고, 이름도 증상도 적을 수 없다.
+ * 그래서 URL · 공유 · 로그 어디에도 원문이 생기지 않는다 (PRD §14).
+ *
+ * 범위를 벗어난 값은 화면에서 바로 알린다. 접수에서 다시 물어야 하는
+ * 값을 그대로 통과시키면 이 화면이 있으나 마나가 된다.
+ */
+function NumberInput({
+  field,
+  value,
+  disabled,
+  onChange,
+}: {
+  field: NumberField;
+  value: number | null;
+  disabled: boolean;
+  onChange: (v: number | null) => void;
+}) {
+  const invalid = value !== null && !isValidNumber(field, value);
+
+  return (
+    <div>
+      <label className="mb-2 block text-[1.18rem] font-bold text-slate-900">
+        {field.label}
+      </label>
+      <div
+        className={`flex items-center gap-2 rounded-2xl border-2 px-4 ${
+          disabled
+            ? "border-slate-300 bg-slate-100"
+            : invalid
+              ? "border-slate-900 bg-white"
+              : "border-slate-500 bg-white"
+        } focus-within:ring-4 focus-within:ring-slate-300`}
+      >
+        <input
+          type="number"
+          inputMode="numeric"
+          min={field.min}
+          max={field.max}
+          disabled={disabled}
+          value={value ?? ""}
+          onChange={(e) =>
+            onChange(e.target.value === "" ? null : Number(e.target.value))
+          }
+          aria-label={`${field.label} (${field.unit})`}
+          className="min-h-[60px] w-full bg-transparent text-[1.5rem] font-extrabold text-slate-900 outline-none disabled:text-slate-400"
+          placeholder="—"
+        />
+        <span className="text-[1.24rem] font-bold text-slate-600">
+          {field.unit}
+        </span>
+      </div>
+      {invalid && (
+        <p aria-live="polite" className="mt-1 text-[1.06rem] text-slate-700">
+          {field.min} ~ {field.max}
+          {field.unit} 사이로 입력해 주세요
+        </p>
+      )}
+    </div>
+  );
+}
 
 /**
  * 예약일 기준 어제/오늘 + 시 + 분. 절대 날짜를 묻지 않는다 — 환자가 헷갈린다.
  *
- * 셋을 모두 고르기 전에는 답으로 넘기지 않는다.
- * 기본값을 채워 두면 환자가 고르지 않은 시각이 요약카드에 찍히고,
- * 그 값으로 금식 위반 여부가 판정된다.
+ * 시 · 분은 드롭다운이다. 24개 · 6개 버튼을 늘어놓으면 화면 한 판을
+ * 통째로 먹는데, 이 시각은 금식을 못 지킨 사람만 고르는 값이다.
+ *
+ * 셋을 모두 고르기 전에는 답으로 넘기지 않는다. 기본값을 채워 두면
+ * 환자가 고르지 않은 시각이 요약카드에 찍힌다.
  */
 function TimePicker({
+  copy,
   value,
   onChange,
 }: {
+  copy: TimeCopy;
   value: TimeAnswer | null;
   onChange: (t: TimeAnswer) => void;
 }) {
@@ -437,91 +606,155 @@ function TimePicker({
       onChange({ day: d, hour: h, minute: m });
   }
 
+  const minutes = Array.from(
+    { length: Math.ceil(60 / copy.minute_step) },
+    (_, i) => i * copy.minute_step,
+  );
+
   return (
     <div className="flex flex-col gap-4">
-      <Row
-        legend="날짜"
-        columns="grid-cols-2"
-        options={[
-          { value: "yesterday", label: "어제" },
-          { value: "today", label: "오늘" },
-        ]}
-        selected={day}
-        onSelect={(v) => {
-          setDay(v as DayRef);
-          emit(v as DayRef, hour, minute);
-        }}
-      />
-      <Row
-        legend="몇 시"
-        columns="grid-cols-6"
-        options={HOURS.map((h) => ({ value: h, label: `${h}시` }))}
-        selected={hour}
-        onSelect={(v) => {
-          setHour(v as number);
-          emit(day, v as number, minute);
-        }}
-      />
-      <Row
-        legend="몇 분"
-        columns="grid-cols-6"
-        options={MINUTES.map((m) => ({
-          value: m,
-          label: `${String(m).padStart(2, "0")}분`,
-        }))}
-        selected={minute}
-        onSelect={(v) => {
-          setMinute(v as number);
-          emit(day, hour, v as number);
-        }}
-      />
+      <fieldset>
+        <legend className="mb-2 text-[1.06rem] font-bold text-slate-700">
+          {copy.day_label}
+        </legend>
+        <Grid
+          columns="grid-cols-2"
+          options={[
+            { value: "yesterday", label: copy.yesterday },
+            { value: "today", label: copy.today },
+          ]}
+          selected={day}
+          onSelect={(v) => {
+            setDay(v as DayRef);
+            emit(v as DayRef, hour, minute);
+          }}
+        />
+      </fieldset>
+
+      <div className="flex gap-3">
+        <Select
+          label={copy.hour_label}
+          value={hour}
+          options={Array.from({ length: 24 }, (_, i) => ({
+            value: i,
+            label: `${i}${copy.hour_label}`,
+          }))}
+          onSelect={(v) => {
+            setHour(v);
+            emit(day, v, minute);
+          }}
+        />
+        <Select
+          label={copy.minute_label}
+          value={minute}
+          options={minutes.map((m) => ({
+            value: m,
+            label: `${String(m).padStart(2, "0")}${copy.minute_label}`,
+          }))}
+          onSelect={(v) => {
+            setMinute(v);
+            emit(day, hour, v);
+          }}
+        />
+      </div>
     </div>
   );
 }
 
-function Row<T extends string | number>({
-  legend,
+/**
+ * 드롭다운. 브라우저가 그려 주는 목록을 그대로 쓴다 — 폰에서는
+ * 화면 아래에서 큰 휠이 올라오므로 직접 만든 목록보다 누르기 쉽다.
+ *
+ * 화살표는 우리가 그린다. appearance-none 을 주지 않으면 iOS 와 안드로이드의
+ * 기본 화살표 크기가 달라 두 칸의 폭이 어긋나 보인다.
+ */
+function Select({
+  label,
+  value,
+  options,
+  onSelect,
+}: {
+  label: string;
+  value: number | null;
+  options: { value: number; label: string }[];
+  onSelect: (v: number) => void;
+}) {
+  return (
+    <div className="relative flex-1">
+      <select
+        aria-label={label}
+        value={value ?? ""}
+        onChange={(e) => onSelect(Number(e.target.value))}
+        // 좌우 여백을 같게 주고 가운데 정렬한다. 한쪽만 비워 두면
+        // 화살표 때문에 글자가 왼쪽으로 밀려 두 칸이 어긋나 보인다
+        className={`min-h-[60px] w-full appearance-none rounded-2xl border-2 bg-white px-10 text-center text-[1.24rem] font-bold focus:ring-4 focus:ring-slate-300 ${
+          value === null
+            ? "border-slate-500 text-slate-500"
+            : "border-slate-900 text-slate-900"
+        }`}
+      >
+        <option value="" disabled>
+          {label}
+        </option>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        className="pointer-events-none absolute top-1/2 right-3 h-6 w-6 -translate-y-1/2 text-slate-600"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+      >
+        <path d="M6 9l6 6 6-6" />
+      </svg>
+    </div>
+  );
+}
+
+/**
+ * 보기에는 버튼이지만 내용은 라디오 그룹이다 (S1 과 같다).
+ * 테두리는 slate-500 이상 — slate-300 은 흰 배경 대비 1.5:1 로
+ * WCAG 1.4.11(비텍스트 3:1) 미달이다.
+ */
+function Grid<T extends string | number>({
   columns,
   options,
   selected,
   onSelect,
 }: {
-  legend: string;
   columns: string;
   options: { value: T; label: string }[];
   selected: T | null;
   onSelect: (v: T) => void;
 }) {
   return (
-    <fieldset>
-      {/* 라벨을 눈에 보이게 둔다. 없으면 "23시" 아래 "00분" 이 이어져
-          두 그리드가 한 덩어리로 읽힌다 */}
-      <legend className="mb-2 text-[1.06rem] font-bold text-slate-700">
-        {legend}
-      </legend>
-      <div className={`grid ${columns} gap-2`}>
-        {options.map((o) => {
-          const on = selected === o.value;
-          return (
-            <label
-              key={String(o.value)}
-              className={`flex min-h-[52px] cursor-pointer items-center justify-center rounded-xl border-2 text-[1.06rem] font-bold ${
-                on
-                  ? "border-slate-900 bg-slate-900 text-white"
-                  : "border-slate-500 bg-white text-slate-800"
-              }`}
-            >
-              <input
-                type="radio"
-                checked={on}
-                onChange={() => onSelect(o.value)}
-                className="sr-only"
-              />
-              {o.label}
-            </label>
-          );
-        })}
-      </div>
-    </fieldset>
+    <div className={`grid ${columns} gap-2`}>
+      {options.map((o) => {
+        const on = selected === o.value;
+        return (
+          <label
+            key={String(o.value)}
+            className={`flex min-h-[52px] cursor-pointer items-center justify-center rounded-xl border-2 text-[1.06rem] font-bold ${
+              on
+                ? "border-slate-900 bg-slate-900 text-white"
+                : "border-slate-500 bg-white text-slate-800"
+            }`}
+          >
+            <input
+              type="radio"
+              checked={on}
+              onChange={() => onSelect(o.value)}
+              className="sr-only"
+            />
+            {o.label}
+          </label>
+        );
+      })}
+    </div>
   );
 }

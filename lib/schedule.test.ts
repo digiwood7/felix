@@ -210,32 +210,55 @@ describe("6. 안전 방향 — 계산은 항상 이르게만 틀린다", () => {
   });
 });
 
-describe("7. 금식 보조 문구는 새벽에만 붙는다", () => {
-  const note = f18FdgPet.fasting.note!;
+/**
+ * FDG PET 룰셋에는 금식 보조 문구가 없다 (2026-08-13 삭제).
+ *
+ * "전날 저녁 식사 이후로 하시면 편합니다" 는 계산된 시각 옆에 붙는
+ * 또 하나의 시각 안내였고, 실무에서 쓰지 않는 문장이었다.
+ *
+ * 다만 note 를 붙이는 기능 자체는 다른 검사가 쓸 수 있으므로 살려 둔다.
+ * 룰셋이 note 를 정의했을 때 규칙대로 동작하는지를 여기서 잠근다.
+ */
+describe("7. 금식 보조 문구 — 룰셋이 정의했을 때만 붙는다", () => {
+  const note = "전날 저녁 식사 이후로 하시면 편합니다";
 
-  it("02:00 금식이면 보조 문구가 붙는다", () => {
-    expect(find(timelineFor(at(2026, 8, 6, 8, 25)), "fasting").notes).toContain(
+  const withNote = {
+    ...f18FdgPet,
+    fasting: {
+      ...f18FdgPet.fasting,
       note,
-    );
+      note_if_between: ["00:00", "06:00"] as [string, string],
+    },
+  };
+
+  function notesOf(ruleset: typeof f18FdgPet, reservation: Reservation) {
+    const timeline = buildTimeline(ruleset, {
+      reservation,
+      locationId: "cancer",
+    });
+    return find(timeline, "fasting").notes;
+  }
+
+  it("현행 FDG 룰셋에는 보조 문구가 없다", () => {
+    expect(f18FdgPet.fasting.note).toBeUndefined();
+    expect(notesOf(f18FdgPet, at(2026, 8, 6, 8, 25))).not.toContain(note);
+  });
+
+  it("02:00 금식이면 붙는다", () => {
+    expect(notesOf(withNote, at(2026, 8, 6, 8, 25))).toContain(note);
   });
 
   // note_if_between 은 시작 포함, 끝 미포함이다
   it("06:00 금식이면 붙지 않는다 — 구간 끝은 미포함", () => {
-    expect(
-      find(timelineFor(at(2026, 8, 6, 12, 0)), "fasting").notes,
-    ).not.toContain(note);
+    expect(notesOf(withNote, at(2026, 8, 6, 12, 0))).not.toContain(note);
   });
 
   it("00:00 금식이면 붙는다 — 구간 시작은 포함", () => {
-    expect(find(timelineFor(at(2026, 8, 6, 6, 0)), "fasting").notes).toContain(
-      note,
-    );
+    expect(notesOf(withNote, at(2026, 8, 6, 6, 0))).toContain(note);
   });
 
   it("전날 18:00 금식이면 붙지 않는다", () => {
-    expect(
-      find(timelineFor(at(2026, 8, 6, 0, 30)), "fasting").notes,
-    ).not.toContain(note);
+    expect(notesOf(withNote, at(2026, 8, 6, 0, 30))).not.toContain(note);
   });
 });
 
@@ -267,7 +290,9 @@ describe("8. 문구는 룰셋에서 읽는다", () => {
   });
 
   it("도착 지시문에 선택한 건물이 들어간다", () => {
-    expect(find(timeline, "arrival").text).toBe("암병원 지하 1층 핵의학과 도착");
+    expect(find(timeline, "arrival").text).toBe(
+      "암병원 지하 1층 핵의학과 도착",
+    );
   });
 
   it("도착 보조에 혈당 측정 사실이 들어간다", () => {

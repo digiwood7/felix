@@ -1,16 +1,21 @@
-import type { ExamRuleset } from "./rules/types";
+import type { ExamRuleset, NumberField, TimeCopy } from "./rules/types";
 
 /**
  * 상태 문답 정의 — PRD §8 F2
  *
  * **문항은 전부 여기서 정의한다.** 화면 컴포넌트에 흩뿌리지 않는다.
- * W0 tally 의 "9번 기타" 원문 분석이 끝나면 T8에서 이 목록을 통째로
- * 교체하게 되는데, 정의가 화면에 섞여 있으면 그때 코드를 다 뒤져야 한다.
  *
- * 지금 문항은 **가안**이다 (PRD §8 F2). 실제 문항은 tally 가 정한다.
+ * 문항 4개는 접수에서 실제로 반복되는 질문 그대로다 (2026-08-13 확인).
  *
- * 자유 텍스트 입력을 만들지 않는다.
- * 선택지는 룰셋에서 읽는다 (intake_categories / medication_categories / flags).
+ *   1. 6시간 금식 여부 — 못 지켰으면 마지막으로 드신 때
+ *   2. 당뇨 — 있으면 당뇨약 · 인슐린을 마지막으로 쓴 때
+ *   3. 키 · 몸무게 — 모르면 모른다고 답할 수 있다
+ *   4. 만 50세 이하 여성이면 임신 · 수유 · 생리 여부
+ *
+ * 늘리지 않는다. 문항이 늘면 40초 완주 기준을 넘기고(WORKFLOW W2 게이트),
+ * 접수에서 어차피 묻지 않는 항목은 물어봐야 접수 시간이 줄지 않는다.
+ *
+ * 자유 텍스트 입력을 만들지 않는다. 문구와 선택지는 룰셋에서 읽는다.
  */
 
 /** 예약일 기준 상대 날짜. 절대 날짜를 묻지 않는다 — 환자가 헷갈린다 */
@@ -22,114 +27,188 @@ export interface TimeAnswer {
   minute: number;
 }
 
-export type QuestionKind =
-  | "time" // 시각 하나
-  | "optional_categories" // 없음 / 있음 → 선택지 여러 개
-  | "optional_categories_time" // 없음 / 있음 → 선택지 + 시각
-  | "yes_no_time" // 아니오 / 예 → 시각
-  | "yes_no" // 예 / 아니오
-  | "flags"; // 해당되는 것만 체크. 한 화면 한 탭
+export type QuestionId = "fasting" | "diabetes" | "body" | "female";
+
+/**
+ * "셋 다 해당사항 없음" 을 고른 상태.
+ *
+ * 아무것도 고르지 않은 것과 구분한다. 접수 직원이 카드를 볼 때
+ * "안 물어봤다" 와 "물어봤고 해당 없다" 는 완전히 다른 정보다.
+ * 룰셋 flags 에 없는 id 이므로 배지 판정에는 걸리지 않는다.
+ */
+export const NONE_ID = "none";
 
 export interface Question {
-  id: string;
-  kind: QuestionKind;
+  id: QuestionId;
   /** 화면 맨 위 질문 */
   title: string;
   /** 질문 아래 한 줄. 없으면 생략 */
   hint?: string;
-  /** optional_* 에서 "없음" 쪽 문구 */
-  noneLabel?: string;
-  /** optional_* / yes_no* 에서 "있음" 쪽 문구 */
-  someLabel?: string;
-  /** 선택지 */
-  options?: { id: string; label: string }[];
-  /** 시각을 물을 때 붙는 안내 */
+  /** 왼쪽 버튼 — 항상 긍정("네" · "예") */
+  yesLabel: string;
+  /** 오른쪽 버튼 — 항상 부정("아니요" · "아니오") */
+  noLabel: string;
+  /** 갈래를 타면 이어서 묻는 시각 */
   timeTitle?: string;
+  time?: TimeCopy;
+  /** 갈래를 타면 이어서 고르는 항목 */
+  detailTitle?: string;
+  options?: { id: string; label: string }[];
+  noneLabel?: string;
+  /** 생리 일수처럼 항목에 딸린 추가 질문 */
+  dayTitle?: string;
+  dayMax?: number;
+  dayUnit?: string;
+  /** 직접 입력받는 숫자 */
+  fields?: NumberField[];
+  unknownLabel?: string;
 }
 
-export function buildQuestions(ruleset: ExamRuleset): Question[] {
+/**
+ * 계산된 시각을 문답 화면에도 그대로 보여 준다.
+ *
+ * 금식 문항은 "6시간" 이라고 묻지만, 그 6시간이 몇 시부터인지는
+ * 서비스가 이미 계산해 두었다. 그 시각을 같이 보여 주면 환자가
+ * 뺄셈을 하지 않아도 된다. S2 타임라인에 뜬 바로 그 숫자다.
+ */
+export interface ScheduleHints {
+  /** 금식 시작 — "8월 20일(목) 08:00" */
+  fastingStart?: string;
+  /** 당뇨약 · 인슐린 마지노선 */
+  diabetesCutoff?: string;
+}
+
+export function buildQuestions(
+  ruleset: ExamRuleset,
+  hints: ScheduleHints = {},
+): Question[] {
+  const q = ruleset.questions;
   const diabetes = ruleset.conditional.find((c) => c.id === "diabetes");
 
   return [
     {
-      id: "lastMeal",
-      kind: "time",
-      title: "마지막으로 음식을 드신 때는 언제인가요?",
-      hint: "물은 빼고, 음식만 생각해 주세요",
-    },
-    {
-      id: "intake",
-      kind: "optional_categories",
-      title: "물 외에 드신 것이 있나요?",
-      hint: "커피 한 모금, 사탕 하나도 포함됩니다",
-      noneLabel: "없습니다",
-      someLabel: "있습니다",
-      options: ruleset.intake_categories.map((c) => ({
-        id: c.id,
-        label: c.label,
-      })),
-    },
-    {
-      id: "medication",
-      kind: "optional_categories_time",
-      title: "오늘 드신 약이 있나요?",
-      noneLabel: "없습니다",
-      someLabel: "있습니다",
-      options: ruleset.medication_categories.map((c) => ({
-        id: c.id,
-        label: c.label,
-      })),
-      timeTitle: "언제 드셨나요?",
+      id: "fasting",
+      title: q.fasting.ask,
+      hint: hints.fastingStart
+        ? `${hints.fastingStart}부터 금식입니다. ${itemsLine(
+            ruleset.fasting.allowed_text,
+            ruleset.fasting.allowed,
+          )}`
+        : itemsLine(ruleset.fasting.allowed_text, ruleset.fasting.allowed),
+      yesLabel: q.fasting.yes_label,
+      noLabel: q.fasting.no_label,
+      timeTitle: q.fasting.time_ask,
+      time: q.time,
     },
     {
       id: "diabetes",
-      kind: "yes_no_time",
       title: diabetes?.ask ?? "당뇨약이나 인슐린을 사용하시나요?",
-      noneLabel: "아니오",
-      someLabel: "예",
-      timeTitle: "마지막으로 사용하신 때는 언제인가요?",
+      hint: hints.diabetesCutoff
+        ? `${hints.diabetesCutoff}까지만 사용 가능합니다`
+        : undefined,
+      yesLabel: q.diabetes.yes_label,
+      noLabel: q.diabetes.no_label,
+      timeTitle: q.diabetes.time_ask,
+      time: q.time,
     },
     {
-      id: "exercise",
-      kind: "yes_no",
-      title: "어제나 오늘 과격한 운동을 하셨나요?",
-      hint: "등산 · 헬스 · 골프 등",
-      noneLabel: "아니오",
-      someLabel: "예",
+      id: "body",
+      title: q.body.ask,
+      hint: q.body.hint,
+      // 두 갈래 버튼이 없는 유일한 문항이다
+      yesLabel: "",
+      noLabel: "",
+      fields: [q.body.height, q.body.weight],
+      unknownLabel: q.body.unknown_label,
     },
     {
-      id: "flags",
-      kind: "flags",
-      title: "해당되는 것이 있으면 눌러 주세요",
-      hint: "없으면 그대로 다음을 눌러 주세요",
+      id: "female",
+      title: q.female.ask,
+      hint: q.female.hint,
+      yesLabel: q.female.yes_label,
+      noLabel: q.female.no_label,
+      detailTitle: q.female.detail_ask,
       options: ruleset.flags.map((f) => ({ id: f.id, label: f.q })),
+      noneLabel: q.female.none_label,
+      dayTitle: q.female.day_ask,
+      dayMax: q.female.day_max,
+      dayUnit: q.female.day_unit,
     },
   ];
 }
 
+/** "{items}만 가능합니다" + ["물(생수)"] → "물(생수)만 가능합니다" */
+function itemsLine(template: string, items: string[]): string {
+  return template.replace("{items}", items.join(" · "));
+}
+
+/** 일수를 물어야 하는 항목. 룰셋 flags 의 id 와 맞춘다 */
+export const MENSTRUATION_ID = "menstruation";
+
 /** 문답 응답. 서버로 보내지 않는다 (PRD §8 F2) */
 export interface Answers {
-  /** 마지막 식사 시각 */
-  lastMeal: TimeAnswer | null;
-  /** 물 외 섭취. 빈 배열이면 "없음" */
-  intake: string[];
-  /** 복용약. null 이면 "없음". time 은 고르기 전까지 null */
-  medication: { categories: string[]; time: TimeAnswer | null } | null;
-  /** 당뇨약 · 인슐린. null 이면 "아니오" */
-  diabetes: TimeAnswer | null;
-  /** 전날 과격한 운동 */
-  exercise: boolean | null;
-  /** 해당되는 flags id 목록 */
-  flags: string[];
+  /** null = 아직 답하지 않음. kept=true 면 6시간 금식을 지켰다 */
+  fasting: { kept: boolean; time: TimeAnswer | null } | null;
+  /** null = 아직 답하지 않음. uses=false 면 당뇨약 · 인슐린 없음 */
+  diabetes: { uses: boolean; time: TimeAnswer | null } | null;
+  /** unknown = 모른다고 답했다. 접수에서 측정한다 */
+  body: { height: number | null; weight: number | null; unknown: boolean };
+  /**
+   * null = 아직 답하지 않음. applies=false 면 해당 없음.
+   *
+   * 나이도 성별도 저장하지 않는다. 저장하는 것은 "이 문항이 해당되는가"와
+   * 해당될 때 고른 항목, 그리고 생리 일수뿐이다.
+   */
+  female: {
+    applies: boolean;
+    checks: string[];
+    menstrualDay: number | null;
+  } | null;
 }
 
 export function emptyAnswers(): Answers {
   return {
-    lastMeal: null,
-    intake: [],
-    medication: null,
+    fasting: null,
     diabetes: null,
-    exercise: null,
-    flags: [],
+    body: { height: null, weight: null, unknown: false },
+    female: null,
   };
+}
+
+/** 범위를 벗어난 숫자는 답으로 받지 않는다 */
+export function isValidNumber(field: NumberField, value: number | null) {
+  return value !== null && value >= field.min && value <= field.max;
+}
+
+/** 다음으로 넘어갈 수 있는지 */
+export function isAnswered(question: Question, a: Answers): boolean {
+  switch (question.id) {
+    case "fasting":
+      // 시각을 고르기 전에는 넘기지 않는다. 기본값을 채워 두면
+      // 환자가 고르지 않은 시각으로 금식 위반 여부가 판정된다
+      return a.fasting !== null && (a.fasting.kept || a.fasting.time !== null);
+    case "diabetes":
+      return (
+        a.diabetes !== null && (!a.diabetes.uses || a.diabetes.time !== null)
+      );
+    case "body": {
+      if (a.body.unknown) return true;
+      const [height, weight] = question.fields!;
+      return (
+        isValidNumber(height, a.body.height) &&
+        isValidNumber(weight, a.body.weight)
+      );
+    }
+    case "female": {
+      if (a.female === null) return false;
+      if (!a.female.applies) return true;
+      // 해당된다고 했으면 무엇이 해당되는지까지 골라야 한다.
+      // "셋 다 해당사항 없음" 도 답이다
+      if (a.female.checks.length === 0) return false;
+      if (a.female.checks.includes(MENSTRUATION_ID)) {
+        return a.female.menstrualDay !== null;
+      }
+      return true;
+    }
+  }
 }

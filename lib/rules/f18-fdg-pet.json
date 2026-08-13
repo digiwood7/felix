@@ -19,7 +19,11 @@
     "hint": "예약 안내문이나 예약 문자에 적혀 있습니다",
     "fallback_text": "지하 1층 핵의학과",
     "options": [
-      { "id": "main", "label": "본관 지하1층", "text": "본관 지하 1층 핵의학과" },
+      {
+        "id": "main",
+        "label": "본관 지하1층",
+        "text": "본관 지하 1층 핵의학과"
+      },
       {
         "id": "cancer",
         "label": "암병원 지하1층",
@@ -46,8 +50,6 @@
     "hours": 6,
     "round": "floor_hour",
     "text": "이 시각 이후 아무것도 드시지 마세요",
-    "note": "전날 저녁 식사 이후로 하시면 편합니다",
-    "note_if_between": ["00:00", "06:00"],
     "allowed": ["물(생수)"],
     "allowed_text": "{items}만 가능합니다",
     "allowed_note": "단, 같은 날 다른 검사가 있으면 반드시 확인 후 생수를 드시기 바랍니다",
@@ -75,45 +77,70 @@
     }
   ],
 
-  "intake_categories": [
-    { "id": "beverage_caffeine", "label": "커피 · 차" },
-    { "id": "beverage_sugar", "label": "주스 · 음료" },
-    { "id": "dairy", "label": "우유 · 유제품" },
-    { "id": "candy_gum", "label": "사탕 · 껌" },
-    { "id": "intake_other", "label": "그 외" }
-  ],
-
-  "medication_categories": [
-    { "id": "med_bp", "label": "혈압약" },
-    { "id": "med_diabetes", "label": "당뇨약 · 인슐린" },
-    { "id": "med_thyroid", "label": "갑상선약" },
-    { "id": "med_other", "label": "그 외" }
-  ],
+  "questions": {
+    "time": {
+      "day_label": "날짜",
+      "yesterday": "어제",
+      "today": "오늘",
+      "hour_label": "시",
+      "minute_label": "분",
+      "minute_step": 10
+    },
+    "fasting": {
+      "ask": "6시간 금식 하셨나요?",
+      "yes_label": "네",
+      "no_label": "아니요",
+      "time_ask": "마지막으로 드신 때는 언제인가요?"
+    },
+    "diabetes": {
+      "yes_label": "예",
+      "no_label": "아니오",
+      "time_ask": "마지막으로 사용하신 때는 언제인가요?"
+    },
+    "body": {
+      "ask": "키와 몸무게를 입력해주세요",
+      "hint": "모르시면 접수 당일 측정하면 됩니다",
+      "unknown_label": "모르겠습니다",
+      "height": { "label": "키", "unit": "cm", "min": 100, "max": 220 },
+      "weight": {
+        "label": "몸무게",
+        "unit": "kg",
+        "min": 20,
+        "max": 250,
+        "limit": 140
+      }
+    },
+    "female": {
+      "ask": "만 50세 이하 여성이신가요?",
+      "hint": "임신 · 수유 · 생리 여부만 확인합니다",
+      "yes_label": "예",
+      "no_label": "아니오",
+      "detail_ask": "해당되는 것을 눌러 주세요",
+      "none_label": "셋 다 해당사항 없음",
+      "day_ask": "며칠째이신가요?",
+      "day_max": 7,
+      "day_unit": "일째"
+    }
+  },
 
   "flags": [
-    { "id": "weight", "q": "체중이 140kg을 넘으시나요?", "level": "call" },
-    { "id": "claustro", "q": "폐쇄공포증이 있으신가요?", "level": "call" },
-    {
-      "id": "pregnancy",
-      "q": "임신 가능성이 있거나 수유 중이신가요?",
-      "level": "call"
-    }
+    { "id": "pregnancy", "q": "임신 가능성이 있습니다", "level": "call" },
+    { "id": "lactation", "q": "수유 중입니다", "level": "call" },
+    { "id": "menstruation", "q": "생리 중입니다", "level": "tell" }
   ],
 
   "triage": [
     {
       "when": "fasting.broken",
       "level": "tell",
-      "label": "금식 시작 이후 음식 섭취"
+      "label": "금식 시작 이후 섭취"
     },
-    { "when": "intake.non_water", "level": "tell", "label": "물 외 섭취" },
-    { "when": "medication.taken", "level": "tell", "label": "당일 복약" },
     {
       "when": "diabetes.after_cutoff",
       "level": "call",
       "label": "당뇨약 마지노선 이후 사용"
     },
-    { "when": "exercise.yes", "level": "tell", "label": "전날 과격한 운동" }
+    { "when": "weight.over_limit", "level": "call", "label": "체중 140kg 초과" }
   ],
 
   "levels": {

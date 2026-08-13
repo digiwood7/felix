@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import Timeline from "@/components/Timeline";
+import { buildQuestions } from "@/lib/questions";
 import { parseReservationParam } from "@/lib/reservationParam";
 import { f18FdgPet } from "@/lib/rules";
 import { buildTimeline } from "@/lib/schedule";
@@ -70,8 +71,10 @@ export default async function TimelineScreen({
       >
         검사 준비 확인하기
       </Link>
+      {/* 문항 수를 손으로 적지 않는다. 문답이 바뀌면 이 줄이 먼저 거짓말을 한다 */}
       <p className="mt-2 text-center text-[1.06rem] leading-snug text-slate-600">
-        5가지만 답하시면 접수처에 보여드릴 화면을 만들어 드립니다
+        {buildQuestions(f18FdgPet).length}가지만 답하시면 접수처에 보여드릴
+        화면을 만들어 드립니다
       </p>
     </main>
   );

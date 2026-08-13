@@ -33,10 +33,8 @@ export type TimeOfDay = string;
  */
 export type TriageCondition =
   | "fasting.broken"
-  | "intake.non_water"
-  | "medication.taken"
   | "diabetes.after_cutoff"
-  | "exercise.yes";
+  | "weight.over_limit";
 
 /** 제한이 시작되는 기준점 */
 export type RestrictionFrom = "prev_day_start";
@@ -130,12 +128,87 @@ export interface Restriction {
   text: string;
 }
 
-/** 자유 입력 대신 쓰는 선택지 (PRD §8 F2) */
-export interface Category {
-  id: string;
-  label: string;
+/**
+ * 문답 문구 — S3 화면이 읽는다.
+ *
+ * 문항 자체가 검사마다 다르다. FDG PET 은 금식 · 당뇨 · 체중 · 임신이지만
+ * 다른 검사는 조영제 알레르기나 신장 수치를 묻는다. 그래서 문구를
+ * 컴포넌트가 아니라 여기서 읽는다.
+ *
+ * 실제 접수에서 반복되는 문답 4종만 담는다 (2026-08-13 확인).
+ * 문항을 늘리면 40초 완주 기준을 넘긴다 (WORKFLOW W2 게이트).
+ */
+export interface QuestionCopy {
+  /** 시각을 묻는 모든 문항이 공유한다 */
+  time: TimeCopy;
+  fasting: {
+    ask: string;
+    yes_label: string;
+    no_label: string;
+    /** "아니요" 를 골랐을 때 이어서 묻는다 */
+    time_ask: string;
+  };
+  diabetes: {
+    /** 질문 자체는 conditional.diabetes.ask 를 쓴다. 여기 두면 두 벌이 된다 */
+    yes_label: string;
+    no_label: string;
+    /** "예" 를 골랐을 때 이어서 묻는다 */
+    time_ask: string;
+  };
+  body: {
+    ask: string;
+    hint: string;
+    /** 모르면 접수에서 잰다. 억지로 채우게 하면 틀린 값이 들어온다 */
+    unknown_label: string;
+    height: NumberField;
+    weight: NumberField;
+  };
+  female: {
+    ask: string;
+    hint: string;
+    yes_label: string;
+    no_label: string;
+    detail_ask: string;
+    /** 세 항목 중 어느 것도 아닌 경우. 빈 채로 넘기는 것과 구분된다 */
+    none_label: string;
+    day_ask: string;
+    day_max: number;
+    day_unit: string;
+  };
 }
 
+export interface TimeCopy {
+  day_label: string;
+  yesterday: string;
+  today: string;
+  hour_label: string;
+  minute_label: string;
+  /** 분 선택지 간격 */
+  minute_step: number;
+}
+
+/**
+ * 숫자를 직접 받는다 — 키 · 몸무게처럼 본인이 아는 값.
+ *
+ * 숫자 입력은 자유 텍스트가 아니다. 이름도 증상도 적을 수 없으므로
+ * URL · 공유 · 로그 어디에도 원문이 생기지 않는다 (PRD §14).
+ * 범위를 벗어난 값은 코드가 막는다.
+ */
+export interface NumberField {
+  label: string;
+  unit: string;
+  min: number;
+  max: number;
+  /** 이 값을 넘으면 triage 가 걸린다. 없으면 상한 판정을 하지 않는다 */
+  limit?: number;
+}
+
+/**
+ * 환자가 스스로 아는 사실. 해당되면 그 자체로 배지가 된다 (PRD §9.4).
+ *
+ * 혈당처럼 당일 병원이 측정하는 값은 여기에 넣지 않는다.
+ * 자가 응답으로 "해당 없음"이 되면 거짓 안심을 준다.
+ */
 export interface Flag {
   id: string;
   q: string;
@@ -174,8 +247,8 @@ export interface ExamRuleset {
   fasting: Fasting;
   conditional: ConditionalRule[];
   restrictions: Restriction[];
-  intake_categories: Category[];
-  medication_categories: Category[];
+  /** S3 문답 문구. 문항은 이 블록이 정한다 */
+  questions: QuestionCopy;
   flags: Flag[];
   /** 없어도 flags 만으로 배지가 판정되어야 한다 (PRD §9.4) */
   triage?: TriageRule[];
