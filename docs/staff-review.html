@@ -1,0 +1,1287 @@
+<!--
+  W1 게이트 — 접수 직원 3명에게 보여주는 검토 문서.
+
+  용도
+    요약카드의 배지(초록 · 노랑 · 빨강)가 어떤 기준으로 정해지는지 설명하고,
+    직원이 확정해 주어야 할 값을 질문 19개로 묻는다.
+    여기서 받아 온 답이 T8 의 입력이 된다 (WORKFLOW W1 게이트).
+
+  보는 곳
+    https://claude.ai/code/artifact/98d85973-a76a-4231-992e-d16958627f56
+    기본은 비공개다. 직원 폰으로 보여주려면 그 페이지에서 공유를 켠다.
+
+  이 파일에 대해
+    게시본의 원본이다. 문서 골격(<!doctype> · <head> · <body>)은 게시할 때
+    자동으로 씌워지므로 여기에 넣지 않는다. 그래서 파일을 브라우저로 직접
+    열면 여백이 조금 다르게 보인다 — 확인은 위 주소에서 한다.
+
+    질문이나 기준이 바뀌면 이 파일을 고치고, 같은 주소로 다시 게시한다.
+    값 자체(체중 상한 · 허용 오차 등)의 근거는 lib/rules/f18-fdg-pet.json 과
+    커밋 본문에 있다. 두 곳이 어긋나면 룰셋이 맞다.
+-->
+
+<title>요약카드 배지 기준 — 접수 실무 확인 요청</title>
+
+<style>
+  :root {
+    --paper: #f4f6f8;
+    --surface: #ffffff;
+    --ink: #101720;
+    --ink-soft: #4d5b6b;
+    --ink-faint: #7a8797;
+    --line: #dde3ea;
+    --line-strong: #c3ccd7;
+
+    --ok: #04785f;
+    --ok-bg: #e7f5f0;
+    --tell: #a35a06;
+    --tell-bg: #fdf1e0;
+    --call: #b0201c;
+    --call-bg: #fdecea;
+
+    --sans:
+      -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI",
+      "Malgun Gothic", sans-serif;
+    --mono:
+      ui-monospace, SFMono-Regular, "SF Mono", Menlo, "Cascadia Mono",
+      monospace;
+
+    --measure: 34rem;
+    --pad: clamp(1.25rem, 4vw, 2.5rem);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0d1117;
+      --surface: #151c25;
+      --ink: #e8edf3;
+      --ink-soft: #a3b0be;
+      --ink-faint: #7d8b9a;
+      --line: #26313d;
+      --line-strong: #3a4756;
+
+      --ok: #4bd0a7;
+      --ok-bg: #10281f;
+      --tell: #e8a13c;
+      --tell-bg: #2b1f0c;
+      --call: #f0736b;
+      --call-bg: #2c1413;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper: #0d1117;
+    --surface: #151c25;
+    --ink: #e8edf3;
+    --ink-soft: #a3b0be;
+    --ink-faint: #7d8b9a;
+    --line: #26313d;
+    --line-strong: #3a4756;
+
+    --ok: #4bd0a7;
+    --ok-bg: #10281f;
+    --tell: #e8a13c;
+    --tell-bg: #2b1f0c;
+    --call: #f0736b;
+    --call-bg: #2c1413;
+  }
+
+  :root[data-theme="light"] {
+    --paper: #f4f6f8;
+    --surface: #ffffff;
+    --ink: #101720;
+    --ink-soft: #4d5b6b;
+    --ink-faint: #7a8797;
+    --line: #dde3ea;
+    --line-strong: #c3ccd7;
+
+    --ok: #04785f;
+    --ok-bg: #e7f5f0;
+    --tell: #a35a06;
+    --tell-bg: #fdf1e0;
+    --call: #b0201c;
+    --call-bg: #fdecea;
+  }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 1.0625rem;
+    line-height: 1.65;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+    text-wrap: pretty;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .page {
+    max-width: 52rem;
+    margin: 0 auto;
+    padding: var(--pad) var(--pad) 5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 3.5rem;
+  }
+
+  p,
+  li {
+    max-width: var(--measure);
+  }
+
+  /* ── 머리 ─────────────────────────────── */
+
+  .masthead {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding-bottom: 1.75rem;
+    border-bottom: 2px solid var(--ink);
+  }
+
+  .eyebrow {
+    font-size: 0.8125rem;
+    letter-spacing: 0.14em;
+    color: var(--ink-faint);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: clamp(1.9rem, 5.5vw, 2.7rem);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    font-weight: 800;
+    text-wrap: balance;
+  }
+
+  .lede {
+    margin: 0;
+    font-size: 1.1875rem;
+    color: var(--ink-soft);
+  }
+
+  .stamp {
+    align-self: flex-start;
+    margin-top: 0.25rem;
+    border: 1.5px solid var(--line-strong);
+    padding: 0.5rem 0.875rem;
+    font-size: 0.9375rem;
+    color: var(--ink-soft);
+  }
+  .stamp b {
+    color: var(--ink);
+  }
+
+  /* ── 구획 ─────────────────────────────── */
+
+  section {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    padding-top: 1rem;
+    border-top: 1px solid var(--line-strong);
+  }
+
+  h2 .sub {
+    display: block;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--ink-faint);
+    letter-spacing: 0;
+    margin-top: 0.25rem;
+  }
+
+  h3 {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 700;
+  }
+
+  p {
+    margin: 0;
+  }
+
+  /* ── 등급 카드 ─────────────────────────── */
+
+  .levels {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .level {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.875rem;
+    align-items: start;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 5px solid var(--tone);
+    padding: 1rem 1.125rem;
+  }
+
+  .level--ok {
+    --tone: var(--ok);
+    --tone-bg: var(--ok-bg);
+  }
+  .level--tell {
+    --tone: var(--tell);
+    --tone-bg: var(--tell-bg);
+  }
+  .level--call {
+    --tone: var(--call);
+    --tone-bg: var(--call-bg);
+  }
+
+  .level svg {
+    width: 1.75rem;
+    height: 1.75rem;
+    color: var(--tone);
+    flex: none;
+    margin-top: 0.1rem;
+  }
+
+  .level-name {
+    font-weight: 800;
+    color: var(--tone);
+    font-size: 1.0625rem;
+  }
+
+  .level-said {
+    margin-top: 0.15rem;
+    font-size: 1.0625rem;
+    font-weight: 600;
+  }
+
+  .level-mean {
+    margin-top: 0.35rem;
+    color: var(--ink-soft);
+    font-size: 0.9688rem;
+  }
+
+  /* ── 기준 ─────────────────────────────── */
+
+  .rules {
+    display: grid;
+    gap: 1.25rem;
+  }
+
+  .rule {
+    background: var(--surface);
+    border: 1px solid var(--line);
+  }
+
+  .rule-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem 0.875rem;
+    padding: 0.875rem 1.125rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .rule-head .basis {
+    font-family: var(--mono);
+    font-size: 0.875rem;
+    color: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .rule-row {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.75rem;
+    align-items: baseline;
+    padding: 0.75rem 1.125rem;
+    border-top: 1px solid var(--line);
+    background: var(--row-bg, transparent);
+  }
+  .rule-row:first-of-type {
+    border-top: 0;
+  }
+
+  .rule-row--ok {
+    --tone: var(--ok);
+    --row-bg: var(--ok-bg);
+  }
+  .rule-row--tell {
+    --tone: var(--tell);
+    --row-bg: var(--tell-bg);
+  }
+  .rule-row--call {
+    --tone: var(--call);
+    --row-bg: var(--call-bg);
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--tone);
+    font-weight: 800;
+    font-size: 0.875rem;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+  .chip svg {
+    width: 1.05rem;
+    height: 1.05rem;
+  }
+
+  .rule-row p {
+    margin: 0;
+    max-width: none;
+  }
+  .rule-row .note {
+    display: block;
+    color: var(--ink-soft);
+    font-size: 0.9375rem;
+  }
+
+  /* ── 예시 표 ───────────────────────────── */
+
+  .scroll {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 30rem;
+    font-size: 0.9688rem;
+  }
+
+  caption {
+    text-align: left;
+    padding: 0.875rem 1.125rem;
+    border-bottom: 1px solid var(--line);
+    color: var(--ink-soft);
+    font-size: 0.9375rem;
+  }
+  caption b {
+    color: var(--ink);
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  th,
+  td {
+    text-align: left;
+    padding: 0.6875rem 1.125rem;
+    border-top: 1px solid var(--line);
+    vertical-align: baseline;
+  }
+
+  thead th {
+    border-top: 0;
+    font-size: 0.8125rem;
+    letter-spacing: 0.1em;
+    color: var(--ink-faint);
+    font-weight: 600;
+  }
+
+  td.num,
+  th.num {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  td.verdict {
+    width: 1%;
+    white-space: nowrap;
+  }
+
+  td .why {
+    color: var(--ink-soft);
+    font-size: 0.9063rem;
+  }
+
+  /* ── 제외 목록 ─────────────────────────── */
+
+  .excluded {
+    display: grid;
+    gap: 0;
+    background: var(--surface);
+    border: 1px solid var(--line);
+  }
+
+  .excluded > div {
+    padding: 1rem 1.125rem;
+    border-top: 1px solid var(--line);
+  }
+  .excluded > div:first-child {
+    border-top: 0;
+  }
+
+  .excluded dt {
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+  }
+  .excluded dd {
+    margin: 0;
+    color: var(--ink-soft);
+    font-size: 0.9688rem;
+  }
+
+  /* ── 질문 ─────────────────────────────── */
+
+  .asks-wrap {
+    counter-reset: ask;
+  }
+
+  .ask-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .ask-group-name {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--ink-faint);
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .ask-group-name span {
+    display: block;
+    font-size: 0.9375rem;
+    font-weight: 400;
+    letter-spacing: 0;
+    margin-top: 0.2rem;
+    max-width: var(--measure);
+  }
+
+  .asks {
+    display: grid;
+    gap: 0.75rem;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .asks li {
+    counter-increment: ask;
+    display: grid;
+    grid-template-columns: 2.25rem 1fr;
+    gap: 0.875rem;
+    align-items: start;
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    padding: 1.125rem;
+    max-width: none;
+  }
+
+  .asks li::before {
+    content: counter(ask);
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--ink-faint);
+    line-height: 1.45;
+  }
+
+  .ask-q {
+    font-size: 1.125rem;
+    font-weight: 700;
+    line-height: 1.45;
+  }
+
+  .ask-why {
+    margin-top: 0.35rem;
+    color: var(--ink-soft);
+    font-size: 0.9688rem;
+  }
+
+  .asks li.pinned {
+    border-color: var(--ink);
+    border-width: 2px;
+  }
+
+  /* ── 꼬리 ─────────────────────────────── */
+
+  footer {
+    border-top: 1px solid var(--line-strong);
+    padding-top: 1.25rem;
+    color: var(--ink-soft);
+    font-size: 0.9375rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.9em;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    padding: 0.05em 0.35em;
+  }
+
+  @media print {
+    body {
+      background: #fff;
+      color: #000;
+    }
+    .page {
+      padding: 0;
+      gap: 2rem;
+    }
+    .level,
+    .rule,
+    .asks li,
+    .scroll,
+    .excluded {
+      break-inside: avoid;
+    }
+  }
+</style>
+
+<div class="page">
+  <header class="masthead">
+    <p class="eyebrow"><span>접수 실무 확인 요청</span><span>2026-08-13</span></p>
+    <h1>요약카드는 어떤 기준으로 초록·노랑·빨강이 되는가</h1>
+    <p class="lede">
+      환자가 도착 전에 네 가지를 답하면, 접수 창구에 보여줄 카드 한 장이
+      만들어집니다. 그 카드 맨 위에 붙는 등급이 어떻게 정해지는지 적었습니다.
+    </p>
+    <p class="stamp">
+      아래 등급 배치는 <b>개발자가 임시로 정한 값</b>입니다. 실무에 맞는지
+      봐 주시는 것이 이 문서의 목적입니다.
+    </p>
+  </header>
+
+  <section>
+    <h2>
+      등급 세 가지
+      <span class="sub">환자 화면에 나가는 문장은 이 셋뿐입니다</span>
+    </h2>
+
+    <div class="levels">
+      <div class="level level--ok">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.4"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <circle cx="12" cy="12" r="9"></circle>
+          <path d="M8 12.5l2.5 2.5L16 9.5"></path>
+        </svg>
+        <div>
+          <p class="level-name">초록</p>
+          <p class="level-said">접수처에 추가로 말씀하실 내용이 없습니다</p>
+          <p class="level-mean">되물을 것이 없다는 뜻입니다.</p>
+        </div>
+      </div>
+
+      <div class="level level--tell">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.4"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M12 3.5L21.5 20H2.5z"></path>
+          <path d="M12 10v4M12 17.2v.1"></path>
+        </svg>
+        <div>
+          <p class="level-name">노랑</p>
+          <p class="level-said">접수하실 때 이 화면을 보여주세요</p>
+          <p class="level-mean">
+            직원이 알아야 하지만, 와서 말하면 되는 것입니다.
+          </p>
+        </div>
+      </div>
+
+      <div class="level level--call">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.4"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path
+            d="M6.5 3.5h3l1.5 4-2 1.5a12 12 0 006 6l1.5-2 4 1.5v3a2 2 0 01-2.2 2A17 17 0 014.5 5.7a2 2 0 012-2.2z"
+          ></path>
+        </svg>
+        <div>
+          <p class="level-name">빨강</p>
+          <p class="level-said">출발 전에 1599-3114로 먼저 전화해 주세요</p>
+          <p class="level-mean">오기 전에 정리되는 편이 나은 것입니다.</p>
+        </div>
+      </div>
+    </div>
+
+    <p>
+      화면은 색만으로 구분하지 않습니다. 색 · 도형 · 글자 셋을 함께 씁니다.
+      흑백으로 인쇄해도, 색을 구분하기 어려운 분이 보아도 읽힙니다.
+    </p>
+  </section>
+
+  <section>
+    <h2>
+      항목별 기준
+      <span class="sub">환자가 답하는 것은 네 가지입니다</span>
+    </h2>
+
+    <div class="rules">
+      <article class="rule">
+        <div class="rule-head">
+          <h3>금식</h3>
+          <span class="basis">기준 6시간 · 허용 1시간</span>
+        </div>
+        <div class="rule-row rule-row--ok">
+          <span class="chip"
+            ><svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="9"></circle>
+              <path d="M8 12.5l2.5 2.5L16 9.5"></path></svg
+            >초록</span
+          >
+          <p>“6시간 금식하셨나요”에 <b>네</b>라고 답함</p>
+        </div>
+        <div class="rule-row rule-row--tell">
+          <span class="chip"
+            ><svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 3.5L21.5 20H2.5z"></path>
+              <path d="M12 10v4M12 17.2v.1"></path></svg
+            >노랑</span
+          >
+          <p>
+            못 지켰고, 모자란 시간이 <b>1시간 이내</b>
+            <span class="note">= 5시간 이상은 굶은 경우</span>
+          </p>
+        </div>
+        <div class="rule-row rule-row--call">
+          <span class="chip"
+            ><svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path
+                d="M6.5 3.5h3l1.5 4-2 1.5a12 12 0 006 6l1.5-2 4 1.5v3a2 2 0 01-2.2 2A17 17 0 014.5 5.7a2 2 0 012-2.2z"
+              ></path></svg
+            >빨강</span
+          >
+          <p>
+            못 지켰고, 모자란 시간이 <b>1시간 초과</b>
+            <span class="note">= 5시간도 못 굶은 경우</span>
+          </p>
+        </div>
+      </article>
+
+      <article class="rule">
+        <div class="rule-head">
+          <h3>당뇨약 · 인슐린</h3>
+          <span class="basis">마지노선 4시간 전 · 허용 1시간</span>
+        </div>
+        <div class="rule-row rule-row--ok">
+          <span class="chip"
+            ><svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="9"></circle>
+              <path d="M8 12.5l2.5 2.5L16 9.5"></path></svg
+            >초록</span
+          >
+          <p>쓰지 않거나, 마지노선 전에 사용</p>
+        </div>
+        <div class="rule-row rule-row--tell">
+          <span class="chip"
+            ><svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 3.5L21.5 20H2.5z"></path>
+              <path d="M12 10v4M12 17.2v.1"></path></svg
+            >노랑</span
+          >
+          <p>
+            마지노선을 <b>1시간 이내로</b> 넘김
+            <span class="note">= 검사 3시간 전까지 사용</span>
+          </p>
+        </div>
+        <div class="rule-row rule-row--call">
+          <span class="chip"
+            ><svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path
+                d="M6.5 3.5h3l1.5 4-2 1.5a12 12 0 006 6l1.5-2 4 1.5v3a2 2 0 01-2.2 2A17 17 0 014.5 5.7a2 2 0 012-2.2z"
+              ></path></svg
+            >빨강</span
+          >
+          <p>
+            마지노선을 <b>1시간 넘게</b> 넘김
+            <span class="note">= 검사 3시간 이내에 사용</span>
+          </p>
+        </div>
+      </article>
+
+      <article class="rule">
+        <div class="rule-head">
+          <h3>키 · 몸무게</h3>
+          <span class="basis">체중 상한 150kg</span>
+        </div>
+        <div class="rule-row rule-row--ok">
+          <span class="chip"
+            ><svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="9"></circle>
+              <path d="M8 12.5l2.5 2.5L16 9.5"></path></svg
+            >초록</span
+          >
+          <p>
+            150kg 이하, 또는 모른다고 답함
+            <span class="note">모르면 접수에서 재도록 안내합니다</span>
+          </p>
+        </div>
+        <div class="rule-row rule-row--call">
+          <span class="chip"
+            ><svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path
+                d="M6.5 3.5h3l1.5 4-2 1.5a12 12 0 006 6l1.5-2 4 1.5v3a2 2 0 01-2.2 2A17 17 0 014.5 5.7a2 2 0 012-2.2z"
+              ></path></svg
+            >빨강</span
+          >
+          <p>
+            <b>150kg 초과</b>
+            <span class="note">정확히 150kg은 걸리지 않습니다</span>
+          </p>
+        </div>
+      </article>
+
+      <article class="rule">
+        <div class="rule-head">
+          <h3>임신 · 수유 · 생리</h3>
+          <span class="basis">만 50세 이하 여성에게만 묻습니다</span>
+        </div>
+        <div class="rule-row rule-row--ok">
+          <span class="chip"
+            ><svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="9"></circle>
+              <path d="M8 12.5l2.5 2.5L16 9.5"></path></svg
+            >초록</span
+          >
+          <p>해당 없음, 또는 셋 다 아님</p>
+        </div>
+        <div class="rule-row rule-row--tell">
+          <span class="chip"
+            ><svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 3.5L21.5 20H2.5z"></path>
+              <path d="M12 10v4M12 17.2v.1"></path></svg
+            >노랑</span
+          >
+          <p>
+            생리 중
+            <span class="note">며칠째인지도 함께 받아 카드에 적습니다</span>
+          </p>
+        </div>
+        <div class="rule-row rule-row--call">
+          <span class="chip"
+            ><svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path
+                d="M6.5 3.5h3l1.5 4-2 1.5a12 12 0 006 6l1.5-2 4 1.5v3a2 2 0 01-2.2 2A17 17 0 014.5 5.7a2 2 0 012-2.2z"
+              ></path></svg
+            >빨강</span
+          >
+          <p>임신 가능성이 있거나 수유 중</p>
+        </div>
+      </article>
+    </div>
+
+    <p>
+      여러 개가 걸리면 <b>가장 높은 등급이 카드 전체의 등급</b>이 됩니다.
+      노랑과 빨강이 함께면 빨강입니다. 걸린 항목은 카드 아래쪽에 빠짐없이
+      나열되므로, 무엇 때문인지 바로 보입니다.
+    </p>
+  </section>
+
+  <section>
+    <h2>
+      실제로 이렇게 나옵니다
+      <span class="sub">허용 시간을 어디서 재는지가 여기서 드러납니다</span>
+    </h2>
+
+    <div class="scroll">
+      <table>
+        <caption>
+          예약 <b>8월 20일(목) 14:25</b> · 금식 시작 <b>08:25</b> · 당뇨약
+          마지노선 <b>10:25</b>
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">환자가 답한 내용</th>
+            <th scope="col" class="num">시각</th>
+            <th scope="col">결과</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>어제 저녁에 마지막 식사</td>
+            <td class="num">어제 20:00</td>
+            <td class="verdict" style="color: var(--ok)"><b>초록</b></td>
+          </tr>
+          <tr>
+            <td>
+              아침에 식사<span class="why"> — 5시간 금식, 1시간 부족</span>
+            </td>
+            <td class="num">09:25</td>
+            <td class="verdict" style="color: var(--tell)"><b>노랑</b></td>
+          </tr>
+          <tr>
+            <td>
+              1분 늦게 식사<span class="why"> — 1시간 1분 부족</span>
+            </td>
+            <td class="num">09:26</td>
+            <td class="verdict" style="color: var(--call)"><b>빨강</b></td>
+          </tr>
+          <tr>
+            <td>
+              당뇨약 복용<span class="why"> — 검사 3시간 전</span>
+            </td>
+            <td class="num">11:25</td>
+            <td class="verdict" style="color: var(--tell)"><b>노랑</b></td>
+          </tr>
+          <tr>
+            <td>
+              당뇨약 복용<span class="why"> — 검사 2시간 전</span>
+            </td>
+            <td class="num">12:25</td>
+            <td class="verdict" style="color: var(--call)"><b>빨강</b></td>
+          </tr>
+          <tr>
+            <td>몸무게 150kg</td>
+            <td class="num">—</td>
+            <td class="verdict" style="color: var(--ok)"><b>초록</b></td>
+          </tr>
+          <tr>
+            <td>몸무게 151kg</td>
+            <td class="num">—</td>
+            <td class="verdict" style="color: var(--call)"><b>빨강</b></td>
+          </tr>
+          <tr>
+            <td>생리 3일째</td>
+            <td class="num">—</td>
+            <td class="verdict" style="color: var(--tell)"><b>노랑</b></td>
+          </tr>
+          <tr>
+            <td>
+              5시간 금식 + 몸무게 155kg<span class="why">
+                — 노랑과 빨강이 함께</span
+              >
+            </td>
+            <td class="num">—</td>
+            <td class="verdict" style="color: var(--call)"><b>빨강</b></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      허용 시간은 화면에 적힌 <code>08:00</code> · <code>10:00</code>이 아니라
+      <b>예약 시각에서 잽니다.</b> 화면의 시각은 환자가 넉넉히 지키도록 시
+      단위로 내려 적은 값이라, 그것으로 재면 같은 “3시간 전 복용”이 예약
+      분에 따라 노랑이 됐다 빨강이 됐다 합니다.
+    </p>
+  </section>
+
+  <section>
+    <h2>
+      일부러 판정하지 않는 것
+      <span class="sub">틀린 초록을 띄우지 않기 위한 선입니다</span>
+    </h2>
+
+    <dl class="excluded">
+      <div>
+        <dt>혈당</dt>
+        <dd>
+          당일 접수에서 병원이 직접 재는 값입니다. 환자 자가응답으로 초록을
+          띄웠다가 당일 측정값이 넘으면, 서비스가 거짓 안심을 준 것이 됩니다.
+          대신 준비 일정 화면에 “접수 시 혈당을 측정합니다 / 200을 넘으면 검사
+          일정을 다시 잡습니다”를 사실로 적어 둡니다.
+        </dd>
+      </div>
+      <div>
+        <dt>키 · 몸무게를 모른다고 한 경우</dt>
+        <dd>
+          판정할 값이 없으므로 등급을 올리지 않습니다. 억지로 적게 하면 어림값이
+          들어오고, 그 값으로 체중 상한이 판정됩니다.
+        </dd>
+      </div>
+      <div>
+        <dt>환자 답과 계산이 어긋날 때</dt>
+        <dd>
+          “금식 못 했다”고 답했는데 적어 낸 시각으로 계산하면 6시간이 넘는
+          경우가 있습니다. 이때 초록으로 내리지 않습니다. 환자의 답을 계산으로
+          뒤집지 않습니다.
+        </dd>
+      </div>
+      <div>
+        <dt>며칠 전에 만들어 온 카드</dt>
+        <dd>
+          금식 · 복약 · 생리는 검사 당일 사실입니다. 다른 날 답한 카드는 등급을
+          아예 띄우지 않고 “오늘 기준으로 다시 답하기”만 보여줍니다.
+        </dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="asks-wrap">
+    <h2>
+      여쭙고 싶은 것
+      <span class="sub"
+        >여기서 나온 답이 그대로 값이 됩니다. 한 번에 끝내려고 빠짐없이
+        적었습니다</span
+      >
+    </h2>
+
+    <div class="ask-group">
+      <h3 class="ask-group-name">
+        먼저 여쭙습니다
+        <span>답에 따라 문항이 없어지거나, 만드는 방식이 달라집니다</span>
+      </h3>
+      <ol class="asks">
+        <li class="pinned">
+          <div>
+            <p class="ask-q">이 카드를 보면 무엇을 안 물어봐도 되나요?</p>
+            <p class="ask-why">
+              빠진 항목이 있으면 카드가 있어도 결국 다 물어보게 됩니다.
+            </p>
+          </div>
+        </li>
+        <li class="pinned">
+          <div>
+            <p class="ask-q">
+              이 카드에는 환자 이름이 없습니다. 창구에서 누구 것인지 어떻게
+              확인하시겠어요?
+            </p>
+            <p class="ask-why">
+              이름 · 등록번호를 받지 않는 것이 이 서비스가 심의 없이 쓰일 수
+              있는 근거입니다. 대신 창구에서 대조할 방법이 필요합니다.
+            </p>
+          </div>
+        </li>
+        <li class="pinned">
+          <div>
+            <p class="ask-q">
+              빨강이 뜬 환자가 1599-3114로 전화하면 어디로 연결되나요? 누가
+              받고 뭐라고 답하게 되나요?
+            </p>
+            <p class="ask-why">
+              환자가 안내음성을 헤매면 안 하느니만 못합니다. 직통 번호가
+              있으면 그쪽으로 바꾸겠습니다.
+            </p>
+          </div>
+        </li>
+        <li class="pinned">
+          <div>
+            <p class="ask-q">키와 몸무게는 접수에서 어차피 전원 재시나요?</p>
+            <p class="ask-why">
+              전원 측정하신다면 이 문항은 <b>빼겠습니다.</b> 환자 시간만 쓰고
+              직원 시간은 못 아끼는 질문이 됩니다.
+            </p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <p class="ask-q">폐쇄공포증은 접수에서 안 물어보시나요?</p>
+            <p class="ask-why">
+              지금은 문답에서 뺐습니다. 별도 예약이 필요한 항목이라면
+              되살리겠습니다.
+            </p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <p class="ask-q">
+              물 외 섭취 · 복용약 · 전날 운동도 접수에서 물어보시나요?
+            </p>
+            <p class="ask-why">
+              셋 다 문답에서 빼고 준비 일정 안내로만 남겼습니다. 물으신다면
+              되살리겠습니다.
+            </p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <p class="ask-q">
+              “만 50세 이하 여성”의 50이 맞나요?
+            </p>
+            <p class="ask-why">
+              45세 · 55세로 바꾸거나, 나이 대신 폐경 여부로 여쭐 수도 있습니다.
+            </p>
+          </div>
+        </li>
+      </ol>
+    </div>
+
+    <div class="ask-group">
+      <h3 class="ask-group-name">
+        등급과 순서
+        <span>설정값 한 줄로 바뀝니다. 편하게 말씀해 주십시오</span>
+      </h3>
+      <ol class="asks">
+        <li>
+          <div>
+            <p class="ask-q">카드 항목 순서가 이대로 맞나요?</p>
+            <p class="ask-why">
+              지금은 금식 → 당뇨약 → 키·몸무게 → 임신·수유·생리 순입니다. 먼저
+              보고 싶은 것이 맨 위여야 합니다.
+            </p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <p class="ask-q">
+              금식이 1시간 모자란 환자는 노랑인가요, 빨강인가요?
+            </p>
+            <p class="ask-why">
+              그대로 진행하신다면 노랑, 일정을 다시 잡으신다면 빨강으로
+              바꿉니다.
+            </p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <p class="ask-q">허용 1시간이 실무 감각과 맞나요?</p>
+            <p class="ask-why">30분으로 좁히거나 2시간으로 넓힐 수 있습니다.</p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <p class="ask-q">생리 중을 노랑으로 두는 것이 맞나요?</p>
+            <p class="ask-why">
+              접수에서 실제로 하시는 조치가 있는지에 따라 정하려 합니다.
+            </p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <p class="ask-q">
+              금식 시작 시각을 계산한 그대로(새벽 시각이어도) 알려드리는 것이
+              맞나요?
+            </p>
+            <p class="ask-why">
+              8시 25분 검사면 “새벽 2시 25분부터”가 아니라 <b>2시부터</b>라고
+              알려드립니다. 넉넉한 쪽으로만 어긋나게 만들어 두었습니다.
+            </p>
+          </div>
+        </li>
+      </ol>
+    </div>
+
+    <div class="ask-group">
+      <h3 class="ask-group-name">
+        기준 숫자가 현행이 맞는지
+        <span>인쇄된 구판 안내지와 다른 값이 있어 확인이 필요합니다</span>
+      </h3>
+      <ol class="asks">
+        <li>
+          <div>
+            <p class="ask-q">
+              체중 150kg · 금식 6시간 · 당뇨약 4시간 전 · 도착 20분 전 · 검사
+              소요 1시간 20분 · 혈당 200 — 전부 현행이 맞나요?
+            </p>
+            <p class="ask-why">
+              구판 인쇄물에는 체중 130kg, 소요 1시간 30분으로 적혀 있습니다.
+              체중은 2026-08-13에 150kg으로 정정했습니다.
+            </p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <p class="ask-q">
+              전날 운동 금지는 “검사 전날 하루 종일”이 맞나요? 생수 외에는 정말
+              아무것도 안 되나요?
+            </p>
+            <p class="ask-why">
+              지금은 “같은 날 다른 검사가 있으면 확인 후 생수를 드시라”는
+              단서까지 함께 안내합니다.
+            </p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <p class="ask-q">검사 장소는 본관 · 암병원 두 곳이 전부인가요?</p>
+            <p class="ask-why">
+              서비스가 건물을 추측하면 환자가 다른 건물까지 걸어갔다 옵니다.
+              그래서 환자에게 직접 여쭙고 있습니다.
+            </p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <p class="ask-q">
+              카드에 적히는 말이 읽기 편한가요? — “6시간 지켰습니다”, “지키지
+              못했습니다 · 오늘 09:25”
+            </p>
+            <p class="ask-why">
+              직원분들이 쓰시는 말과 다르면 그대로 바꾸겠습니다.
+            </p>
+          </div>
+        </li>
+      </ol>
+    </div>
+
+    <div class="ask-group">
+      <h3 class="ask-group-name">
+        창구에서 실제로 쓰이려면
+        <span>화면을 아무리 잘 만들어도 여기서 막히면 소용이 없습니다</span>
+      </h3>
+      <ol class="asks">
+        <li>
+          <div>
+            <p class="ask-q">
+              환자가 이 화면을 어떻게 보여드리는 것이 편하신가요?
+            </p>
+            <p class="ask-why">
+              휴대전화를 그대로 내미는 것, 화면을 캡처해 오는 것, 창구 모니터로
+              보시는 것 중 어느 쪽이 창구 흐름에 맞는지 알고 싶습니다.
+            </p>
+          </div>
+        </li>
+        <li class="pinned">
+          <div>
+            <p class="ask-q">
+              나중에 집계표에 “카드 가져옴 O / X”를 적어 주실 수 있나요?
+            </p>
+            <p class="ask-why">
+              이 서비스가 실제로 시간을 줄였는지는 <b>카드를 가져온 환자만</b>
+              따로 세어야 알 수 있습니다. 이 칸이 없으면 나중에 아무것도 증명할
+              수 없습니다.
+            </p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <p class="ask-q">
+              안내 스티커를 어디에 붙이면 환자가 볼까요?
+            </p>
+            <p class="ask-why">
+              접수 창구 정면 · 대기 의자 정면 · 안내지를 받는 자리 중에서
+              생각하고 있습니다.
+            </p>
+          </div>
+        </li>
+      </ol>
+    </div>
+
+    <p>
+      바꾸기로 한 값은 <b>설정 파일 한 줄</b>만 고치면 됩니다. 등급을 올리거나
+      내리는 데 프로그램을 다시 만들지 않아도 되니, 편하게 말씀해 주십시오.
+    </p>
+  </section>
+
+  <footer>
+    <p>
+      이 서비스는 병원 공식 서비스가 아니며, 검사 가능 여부를 판단하지 않습니다.
+      최종 확인은 반드시 핵의학과 직원에게 받으세요.
+    </p>
+    <p>
+      환자에게 이름 · 등록번호 · 연락처 · 생년월일을 받지 않습니다. 답변은
+      서버에 저장되지 않고 환자 기기에만 남습니다.
+    </p>
+  </footer>
+</div>
