@@ -109,7 +109,7 @@
         "unit": "kg",
         "min": 20,
         "max": 250,
-        "limit": 140
+        "limit": 150
       }
     },
     "female": {
@@ -187,7 +187,7 @@
       "level": "call",
       "label": "당뇨약 마지노선 초과 (1시간 넘음)"
     },
-    { "when": "weight.over_limit", "level": "call", "label": "체중 140kg 초과" }
+    { "when": "weight.over_limit", "level": "call", "label": "체중 150kg 초과" }
   ],
 
   "levels": {

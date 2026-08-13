@@ -161,7 +161,7 @@ describe("배지 — call", () => {
   it("체중이 상한을 넘으면 call", () => {
     const v = verdictOf({
       ...CLEAN,
-      body: { height: 175, weight: 141, unknown: false },
+      body: { height: 175, weight: 151, unknown: false },
     });
     expect(v.level).toBe("call");
     expect(v.message).toBe(f18FdgPet.levels.call);
@@ -170,7 +170,7 @@ describe("배지 — call", () => {
   it("상한과 같은 값은 call 이 아니다 — 초과부터다", () => {
     const v = verdictOf({
       ...CLEAN,
-      body: { height: 175, weight: 140, unknown: false },
+      body: { height: 175, weight: 150, unknown: false },
     });
     expect(v.level).toBe("ok");
   });
@@ -252,7 +252,7 @@ describe("배지 — call", () => {
       ...CLEAN,
       // 금식은 1시간 이내 부족(tell), 체중은 상한 초과(call)
       fasting: { kept: false, time: { day: "today", hour: 9, minute: 25 } },
-      body: { height: 175, weight: 150, unknown: false },
+      body: { height: 175, weight: 160, unknown: false },
     });
     expect(v.level).toBe("call");
     expect(v.reasons).toHaveLength(2);

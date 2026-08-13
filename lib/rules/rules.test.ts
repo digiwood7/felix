@@ -20,6 +20,10 @@ const TRIAGE_CONDITIONS: TriageCondition[] = [
  * 이 숫자들이 이 서비스의 전부다. 하나가 틀리면 모든 환자에게
  * 일관되게 틀린 시각이 나간다.
  *
+ * ⚠️ 체중은 **150kg** 이다 (2026-08-13 정정).
+ *    문서로는 140kg 으로 옮겨 적혀 있었으나 실무 기준은 150kg 이었다.
+ *    141~150kg 환자에게 불필요한 전화 배지가 나가던 값이다.
+ *
  * ⚠️ 인쇄된 구판 안내지에는 아래 세 값이 다르게 적혀 있다.
  *      소요시간 1시간 30분 / 체중 130kg 이상 / 혈당 200 이상
  *    구판이므로 따르지 않는다. 인쇄물을 보고 "정정"하지 말 것 (PRD 부록 B).
@@ -53,8 +57,8 @@ describe("룰셋 — 현행 실무 기준값", () => {
     expect(f18FdgPet.duration_min).toBe(80);
   });
 
-  it("체중 기준은 140kg", () => {
-    expect(f18FdgPet.questions.body.weight.limit).toBe(140);
+  it("체중 기준은 150kg", () => {
+    expect(f18FdgPet.questions.body.weight.limit).toBe(150);
   });
 
   it("혈당 기준 200은 도착 항목의 사실로 적혀 있다", () => {
