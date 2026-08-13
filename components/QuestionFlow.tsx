@@ -1,9 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-import { saveAnswers } from "@/lib/answers";
+import { clearBody, loadBody, saveAnswers } from "@/lib/answers";
 import type { Answers, DayRef, Question, TimeAnswer } from "@/lib/questions";
 import {
   MENSTRUATION_ID,
@@ -29,13 +29,33 @@ import type { NumberField, TimeCopy } from "@/lib/rules/types";
 export default function QuestionFlow({
   questions,
   backHref,
+  restoredCopy,
 }: {
   questions: Question[];
   backHref: string;
+  /** 지난번 키 · 몸무게를 불러왔을 때 보여줄 문구 */
+  restoredCopy: { restored: string; restored_action: string };
 }) {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Answers>(emptyAnswers());
+  const [restored, setRestored] = useState(false);
+
+  /**
+   * 키 · 몸무게는 지난 검사와 달라지지 않는다. 다시 묻지 않는다.
+   *
+   * 금식 · 복약 · 생리는 불러오지 않는다 — 당일 사실이라 어제 답을
+   * 되살리면 접수에서 틀린 카드를 내밀게 된다.
+   */
+  useEffect(() => {
+    const body = loadBody();
+    if (!body) return;
+    setAnswers((prev) => ({
+      ...prev,
+      body: { height: body.height, weight: body.weight, unknown: false },
+    }));
+    setRestored(true);
+  }, []);
 
   const question = questions[step];
   const isLast = step === questions.length - 1;
@@ -73,6 +93,28 @@ export default function QuestionFlow({
         {question.hint && (
           <p className="mt-2 text-[1.06rem] leading-snug text-slate-600">
             {question.hint}
+          </p>
+        )}
+
+        {/* 값이 미리 채워진 이유를 밝힌다. 모르고 그대로 넘기면
+            옛 몸무게로 체중 상한이 판정된다 (S1 과 같은 방식) */}
+        {question.id === "body" && restored && (
+          <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl bg-slate-100 px-4 py-3 text-[1.06rem] text-slate-700">
+            {restoredCopy.restored}
+            <button
+              type="button"
+              onClick={() => {
+                clearBody();
+                setAnswers({
+                  ...answers,
+                  body: { height: null, weight: null, unknown: false },
+                });
+                setRestored(false);
+              }}
+              className="min-h-[44px] font-bold text-slate-900 underline underline-offset-4"
+            >
+              {restoredCopy.restored_action}
+            </button>
           </p>
         )}
 
@@ -115,8 +157,10 @@ function Progress({ current, total }: { current: number; total: number }) {
         <span className="text-[1.06rem] font-bold text-slate-700">
           {current} / {total}
         </span>
+        {/* 키 · 몸무게는 이제 기기에 남는다. "저장되지 않습니다" 는 더 이상
+            참이 아니므로 S1 과 같은 낱말("서버")로 정확히 적는다 (PRD §11) */}
         <span className="text-[1.06rem] text-slate-600">
-          답변은 저장되지 않습니다
+          서버에 저장되지 않습니다
         </span>
       </div>
       <div

@@ -36,6 +36,7 @@ export default async function CheckScreen({
       <QuestionFlow
         questions={buildQuestions(f18FdgPet, hintsOf(timeline))}
         backHref={backHref}
+        restoredCopy={f18FdgPet.check}
       />
     </main>
   );

@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { loadAnswers } from "@/lib/answers";
+import type { StoredAnswers } from "@/lib/answers";
+import { toKoreanDateLabel } from "@/lib/koreanTime";
 import type { Answers, TimeAnswer } from "@/lib/questions";
 import {
   formatLocation,
@@ -41,11 +43,11 @@ export default function SummaryCard({
   checkHref: string;
 }) {
   // 서버에는 응답이 없다. 마운트 후에 읽어야 화면이 어긋나지 않는다
-  const [answers, setAnswers] = useState<Answers | null>(null);
+  const [stored, setStored] = useState<StoredAnswers | null>(null);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    setAnswers(loadAnswers());
+    setStored(loadAnswers());
     setLoaded(true);
   }, []);
 
@@ -53,22 +55,41 @@ export default function SummaryCard({
 
   if (!loaded) return null;
 
-  if (!answers) {
+  if (!stored) {
     return (
-      <div className="rounded-2xl border-2 border-slate-500 px-5 py-6">
-        <p className="text-[1.18rem] leading-relaxed font-bold text-slate-900">
-          {card.empty}
-        </p>
-        <Link
-          href={checkHref}
-          className="mt-4 flex min-h-[60px] items-center justify-center rounded-2xl bg-slate-900 px-5 text-[1.24rem] font-bold text-white"
-        >
-          {card.empty_action}
-        </Link>
-      </div>
+      <Notice
+        message={card.empty}
+        action={card.empty_action}
+        href={checkHref}
+      />
     );
   }
 
+  /**
+   * 검사일이 아닌 날에 답한 카드는 배지를 띄우지 않는다.
+   *
+   * 금식 · 복약 시각 · 생리 여부는 당일 사실이다. 며칠 전에 만든 🟢 를
+   * 접수에 내밀면 서비스가 거짓 안심을 준 것이 되고, 이 프로젝트가
+   * 얻어야 할 신뢰를 정확히 반대로 깎는다.
+   *
+   * 답을 지우지는 않는다. 다시 답할지는 환자가 정한다.
+   */
+  const examDate = `${reservation.year}-${pad(reservation.month)}-${pad(reservation.day)}`;
+  if (stored.savedOn !== examDate) {
+    return (
+      <Notice
+        message={card.stale.replace(
+          "{date}",
+          toKoreanDateLabel(stored.savedOn),
+        )}
+        hint={card.stale_hint}
+        action={card.stale_action}
+        href={checkHref}
+      />
+    );
+  }
+
+  const answers = stored.answers;
   const verdict = triage({ ruleset, answers, reservation, timeline });
 
   return (
@@ -194,6 +215,42 @@ function Mark({ level, big = false }: { level: Level; big?: boolean }) {
       )}
     </svg>
   );
+}
+
+/** 카드 대신 보여주는 안내 — 답이 없거나, 오늘 답이 아닐 때 */
+function Notice({
+  message,
+  hint,
+  action,
+  href,
+}: {
+  message: string;
+  hint?: string;
+  action: string;
+  href: string;
+}) {
+  return (
+    <div className="rounded-2xl border-2 border-slate-500 px-5 py-6">
+      <p className="text-[1.18rem] leading-relaxed font-bold text-slate-900">
+        {message}
+      </p>
+      {hint && (
+        <p className="mt-2 text-[1.06rem] leading-snug text-slate-600">
+          {hint}
+        </p>
+      )}
+      <Link
+        href={href}
+        className="mt-4 flex min-h-[60px] items-center justify-center rounded-2xl bg-slate-900 px-5 text-center text-[1.24rem] font-bold text-white"
+      >
+        {action}
+      </Link>
+    </div>
+  );
+}
+
+function pad(n: number): string {
+  return String(n).padStart(2, "0");
 }
 
 function Row({ label, value }: { label: string; value: string }) {

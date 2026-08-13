@@ -32,8 +32,10 @@ export type TimeOfDay = string;
  * 조건 판정과 등급을 분리해, level 값만 JSON에서 바꿀 수 있게 한다.
  */
 export type TriageCondition =
-  | "fasting.broken"
+  | "fasting.short"
+  | "fasting.short_over_grace"
   | "diabetes.after_cutoff"
+  | "diabetes.after_cutoff_over_grace"
   | "weight.over_limit";
 
 /** 제한이 시작되는 기준점 */
@@ -89,6 +91,15 @@ export interface Exam {
 
 export interface Fasting {
   hours: number;
+  /**
+   * 허용 오차(시간). 기준에 이만큼까지 모자란 것은 등급을 올리지 않는다.
+   *
+   * 접수 실무에서 5시간 30분 금식과 2시간 금식은 같은 무게가 아니다.
+   * 전자까지 전화 안내로 보내면, 줄이려던 그 전화가 늘어난다.
+   *
+   * 없으면 허용 오차가 0이다 — 기준에 못 미치는 순간 상위 조건이 걸린다.
+   */
+  grace_h?: number;
   round: RoundMode;
   /** 지시문 */
   text: string;
@@ -116,6 +127,8 @@ export interface ConditionalRule {
   ask: string;
   /** 예약 시각 기준 오프셋(시간). 음수가 과거다 */
   offset_h: number;
+  /** 허용 오차(시간). 마지노선을 이만큼까지 넘긴 것은 등급을 올리지 않는다 */
+  grace_h?: number;
   round: RoundMode;
   text: string;
   after_text: string;
@@ -212,6 +225,24 @@ export interface NumberField {
  * 항목 순서와 표현은 W1 게이트에서 직원 3명이 확정한다. 그때 코드가
  * 아니라 이 블록만 바뀌어야 한다.
  */
+/**
+ * S2 에서 문답으로 넘어가는 자리의 문구.
+ *
+ * 검사 당일인지에 따라 달라진다. 타임라인은 안내문을 받은 날부터 보지만
+ * 요약카드는 검사 당일 접수 직전에만 쓸모가 있다. 며칠 전에 만든 카드는
+ * 당일 사실과 다르므로, 그때는 문답을 권하지 않는다.
+ */
+export interface CheckCopy {
+  action: string;
+  action_today: string;
+  note: string;
+  /** `{count}` 자리에 문항 수가 들어간다. 숫자를 문구에 박아 두지 않는다 */
+  note_today: string;
+  /** 지난번 키 · 몸무게를 불러왔을 때 */
+  restored: string;
+  restored_action: string;
+}
+
 export interface CardCopy {
   title: string;
   reservation_label: string;
@@ -231,6 +262,15 @@ export interface CardCopy {
   /** 문답 없이 카드에 바로 들어온 경우 */
   empty: string;
   empty_action: string;
+  /**
+   * 검사일이 아닌 날에 답한 카드.
+   *
+   * 배지를 띄우지 않는다. 며칠 전에 만든 🟢 를 접수에 내밀면 서비스가
+   * 거짓 안심을 준 것이 된다. `{date}` 자리에 작성 날짜가 들어간다.
+   */
+  stale: string;
+  stale_hint: string;
+  stale_action: string;
 }
 
 /**
@@ -279,6 +319,8 @@ export interface ExamRuleset {
   restrictions: Restriction[];
   /** S3 문답 문구. 문항은 이 블록이 정한다 */
   questions: QuestionCopy;
+  /** S2 → S3 진입 문구 */
+  check: CheckCopy;
   /** S4 요약카드 문구 */
   card: CardCopy;
   flags: Flag[];

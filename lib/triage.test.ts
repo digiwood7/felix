@@ -74,15 +74,57 @@ describe("배지 — 해당 없음", () => {
   });
 });
 
+/**
+ * 허용 오차 1시간 — 기준에 조금 못 미치는 것과 크게 못 미치는 것을 가른다.
+ *
+ * 예약이 14:25 이므로 기준은 이렇다.
+ *   금식 6시간 → 08:25 이전 식사면 지킨 것. 07:25 까지는 1시간 부족
+ *   당뇨 4시간 → 10:25 까지 사용. 11:25 까지는 1시간 초과
+ *
+ * **화면에 표시된 내림값(08:00 · 10:00)이 아니라 예약 시각에서 잰다.**
+ * 표시값으로 재면 같은 "3시간 전 복용" 이 예약 분에 따라 tell 이 됐다
+ * call 이 됐다 한다.
+ */
 describe("배지 — tell", () => {
-  it("금식을 못 지켰으면 tell", () => {
+  it("금식이 1시간 이내로 모자라면 tell — 5시간 금식", () => {
     const v = verdictOf({
       ...CLEAN,
-      fasting: { kept: false, time: { day: "today", hour: 7, minute: 0 } },
+      // 09:25 식사 → 5시간 금식 (1시간 부족)
+      fasting: { kept: false, time: { day: "today", hour: 9, minute: 25 } },
     });
     expect(v.level).toBe("tell");
     expect(v.message).toBe(f18FdgPet.levels.tell);
-    expect(v.reasons.map((r) => r.label)).toContain("금식 시작 이후 섭취");
+    expect(v.reasons.map((r) => r.label)).toContain(
+      "금식 시간 부족 (1시간 이내)",
+    );
+  });
+
+  it("당뇨약을 1시간 이내로 늦게 썼으면 tell — 3시간 전 복용", () => {
+    const v = verdictOf({
+      ...CLEAN,
+      // 11:25 사용 → 예약 3시간 전. 마지노선(4시간 전)보다 1시간 늦다
+      diabetes: { uses: true, time: { day: "today", hour: 11, minute: 25 } },
+    });
+    expect(v.level).toBe("tell");
+    expect(v.reasons.map((r) => r.label)).toContain(
+      "당뇨약 마지노선 초과 (1시간 이내)",
+    );
+  });
+
+  // 오차 "이내" 는 정확히 1시간을 포함한다. 경계에서 등급이 갈리지 않는다
+  it("모자람이 정확히 1시간이면 아직 tell", () => {
+    expect(
+      verdictOf({
+        ...CLEAN,
+        fasting: { kept: false, time: { day: "today", hour: 9, minute: 25 } },
+      }).level,
+    ).toBe("tell");
+    expect(
+      verdictOf({
+        ...CLEAN,
+        diabetes: { uses: true, time: { day: "today", hour: 11, minute: 25 } },
+      }).level,
+    ).toBe("tell");
   });
 
   it("생리 중이면 tell — 룰셋 flags 의 level 을 그대로 쓴다", () => {
@@ -141,16 +183,43 @@ describe("배지 — call", () => {
     expect(v.level).toBe("call");
   });
 
-  it("당뇨약을 마지노선 이후에 썼으면 call", () => {
+  it("금식이 1시간 넘게 모자라면 call — 4시간 금식", () => {
     const v = verdictOf({
       ...CLEAN,
-      // 마지노선 10:00
-      diabetes: { uses: true, time: { day: "today", hour: 10, minute: 30 } },
+      // 10:25 식사 → 4시간 금식 (2시간 부족)
+      fasting: { kept: false, time: { day: "today", hour: 10, minute: 25 } },
     });
     expect(v.level).toBe("call");
     expect(v.reasons.map((r) => r.label)).toContain(
-      "당뇨약 마지노선 이후 사용",
+      "금식 시간 부족 (1시간 초과)",
     );
+  });
+
+  it("당뇨약을 1시간 넘게 늦게 썼으면 call — 2시간 전 복용", () => {
+    const v = verdictOf({
+      ...CLEAN,
+      diabetes: { uses: true, time: { day: "today", hour: 12, minute: 25 } },
+    });
+    expect(v.level).toBe("call");
+    expect(v.reasons.map((r) => r.label)).toContain(
+      "당뇨약 마지노선 초과 (1시간 넘음)",
+    );
+  });
+
+  // 1분만 넘어도 등급이 올라간다. 오차는 오차일 뿐 또 하나의 기준이 아니다
+  it("오차를 1분이라도 넘으면 call", () => {
+    expect(
+      verdictOf({
+        ...CLEAN,
+        fasting: { kept: false, time: { day: "today", hour: 9, minute: 26 } },
+      }).level,
+    ).toBe("call");
+    expect(
+      verdictOf({
+        ...CLEAN,
+        diabetes: { uses: true, time: { day: "today", hour: 11, minute: 26 } },
+      }).level,
+    ).toBe("call");
   });
 
   it("마지노선 전에 썼으면 걸리지 않는다", () => {
@@ -181,10 +250,21 @@ describe("배지 — call", () => {
   it("call 과 tell 이 함께면 call 이 이긴다", () => {
     const v = verdictOf({
       ...CLEAN,
-      fasting: { kept: false, time: { day: "today", hour: 7, minute: 0 } },
+      // 금식은 1시간 이내 부족(tell), 체중은 상한 초과(call)
+      fasting: { kept: false, time: { day: "today", hour: 9, minute: 25 } },
       body: { height: 175, weight: 150, unknown: false },
     });
     expect(v.level).toBe("call");
+    expect(v.reasons).toHaveLength(2);
+  });
+
+  // 같은 항목이 tell 과 call 을 동시에 걸면 카드에 두 줄이 뜬다
+  it("한 항목이 두 등급으로 동시에 걸리지 않는다", () => {
+    const v = verdictOf({
+      ...CLEAN,
+      fasting: { kept: false, time: { day: "today", hour: 10, minute: 25 } },
+      diabetes: { uses: true, time: { day: "today", hour: 12, minute: 25 } },
+    });
     expect(v.reasons).toHaveLength(2);
   });
 });
@@ -198,12 +278,12 @@ describe("판정은 룰셋에서만 온다", () => {
     const lowered: ExamRuleset = {
       ...f18FdgPet,
       triage: f18FdgPet.triage!.map((r) =>
-        r.when === "fasting.broken" ? { ...r, level: "ok" as const } : r,
+        r.when === "fasting.short" ? { ...r, level: "ok" as const } : r,
       ),
     };
     const answers: Partial<Answers> = {
       ...CLEAN,
-      fasting: { kept: false, time: { day: "today", hour: 7, minute: 0 } },
+      fasting: { kept: false, time: { day: "today", hour: 9, minute: 25 } },
     };
 
     expect(verdictOf(answers).level).toBe("tell");

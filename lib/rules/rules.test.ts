@@ -7,8 +7,10 @@ import type { Level, TriageCondition } from "./types";
 const LEVELS: Level[] = ["ok", "tell", "call"];
 
 const TRIAGE_CONDITIONS: TriageCondition[] = [
-  "fasting.broken",
+  "fasting.short",
+  "fasting.short_over_grace",
   "diabetes.after_cutoff",
+  "diabetes.after_cutoff_over_grace",
   "weight.over_limit",
 ];
 
@@ -33,6 +35,14 @@ describe("룰셋 — 현행 실무 기준값", () => {
   it("당뇨약 · 인슐린은 4시간 전", () => {
     const diabetes = f18FdgPet.conditional.find((c) => c.id === "diabetes");
     expect(diabetes?.offset_h).toBe(-4);
+  });
+
+  // 5시간 30분 금식과 2시간 금식을 같은 무게로 다루면, 줄이려던 전화가 늘어난다
+  it("금식 · 당뇨의 허용 오차는 1시간", () => {
+    expect(f18FdgPet.fasting.grace_h).toBe(1);
+    expect(
+      f18FdgPet.conditional.find((c) => c.id === "diabetes")?.grace_h,
+    ).toBe(1);
   });
 
   it("도착은 20분 전", () => {

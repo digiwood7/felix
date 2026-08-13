@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import CheckCta from "@/components/CheckCta";
 import Timeline from "@/components/Timeline";
 import { buildQuestions } from "@/lib/questions";
 import { parseReservationParam } from "@/lib/reservationParam";
@@ -64,18 +65,14 @@ export default async function TimelineScreen({
       <Timeline timeline={timeline} ruleset={f18FdgPet} />
 
       {/* S3 진입은 강제하지 않는다. 타임라인만 보고 나가도 목적의 절반은
-          달성된 것이다 (PRD §10). 그래서 링크는 목록 아래에 둔다 */}
-      <Link
+          달성된 것이다 (PRD §10). 그래서 링크는 목록 아래에 둔다.
+          문항 수도 손으로 적지 않는다 — 문답이 바뀌면 이 줄이 먼저 거짓말을 한다 */}
+      <CheckCta
+        copy={f18FdgPet.check}
         href={`/pet/check?t=${t}${b ? `&b=${b}` : ""}`}
-        className="mt-8 flex min-h-[64px] items-center justify-center rounded-2xl bg-slate-900 px-5 text-center text-[1.24rem] font-bold text-white"
-      >
-        검사 준비 확인하기
-      </Link>
-      {/* 문항 수를 손으로 적지 않는다. 문답이 바뀌면 이 줄이 먼저 거짓말을 한다 */}
-      <p className="mt-2 text-center text-[1.06rem] leading-snug text-slate-600">
-        {buildQuestions(f18FdgPet).length}가지만 답하시면 접수처에 보여드릴
-        화면을 만들어 드립니다
-      </p>
+        examDate={examDay.date}
+        questionCount={buildQuestions(f18FdgPet).length}
+      />
     </main>
   );
 }

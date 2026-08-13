@@ -33,3 +33,29 @@ export function toDateTimeAttr(date: string, time: string | null): string {
 export function toKoreanDateLabel(date: string): string {
   return `${Number(date.slice(5, 7))}월 ${Number(date.slice(8, 10))}일`;
 }
+
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+
+/**
+ * 지금이 KST 로 며칠인지 — "2026-08-20"
+ *
+ * **계산 경로에서 쓰지 않는다.** 시각 계산은 예약 일시만으로 이뤄지고
+ * (PRD §9.2), 이 값은 "오늘이 검사일인가" 를 가려 화면을 다르게
+ * 보여주는 데만 쓴다. 기기 시계가 틀려도 계산값은 흔들리지 않는다.
+ *
+ * 기기 타임존은 개입하지 않는다 — UTC 밀리초에 9시간을 더한 뒤
+ * toISOString(UTC 기준) 으로 읽으므로 어느 나라에서 열어도 같다.
+ * getFullYear() 같은 로컬 API 는 쓰지 않는다.
+ */
+export function todayInKST(now: number = Date.now()): string {
+  return new Date(now + KST_OFFSET_MS).toISOString().slice(0, 10);
+}
+
+/**
+ * KST 기준으로 오늘부터 그 날짜까지 며칠 남았는지.
+ * 오늘이면 0, 내일이면 1, 어제면 -1.
+ */
+export function daysUntilInKST(date: string, now: number = Date.now()): number {
+  const day = (value: string) => Date.parse(`${value}T00:00:00Z`);
+  return Math.round((day(date) - day(todayInKST(now))) / 86_400_000);
+}

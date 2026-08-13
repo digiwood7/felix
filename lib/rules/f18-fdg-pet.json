@@ -48,6 +48,7 @@
 
   "fasting": {
     "hours": 6,
+    "grace_h": 1,
     "round": "floor_hour",
     "text": "이 시각 이후 아무것도 드시지 마세요",
     "allowed": ["물(생수)"],
@@ -62,6 +63,7 @@
       "id": "diabetes",
       "ask": "당뇨약이나 인슐린을 사용하시나요?",
       "offset_h": -4,
+      "grace_h": 1,
       "round": "floor_hour",
       "text": "당뇨약 · 인슐린을 쓰신다면 이 시각까지만 사용 가능합니다",
       "after_text": "이후에 사용하셨다면 접수처에 꼭 말씀해 주세요"
@@ -123,6 +125,15 @@
     }
   },
 
+  "check": {
+    "action": "검사 준비 확인하기",
+    "action_today": "지금 검사 준비 확인하기",
+    "note": "검사 당일 아침에 답해 주세요. 지금 답하면 당일과 달라집니다",
+    "note_today": "접수 전에 {count}가지만 답하시면 접수처에 보여드릴 화면을 만들어 드립니다",
+    "restored": "지난번에 답하신 키 · 몸무게를 불러왔습니다",
+    "restored_action": "지우고 새로 입력"
+  },
+
   "card": {
     "title": "접수처에 보여주세요",
     "reservation_label": "예약",
@@ -143,7 +154,10 @@
     },
     "reasons_title": "접수처에 말씀하실 내용",
     "empty": "아직 문답에 답하지 않으셨습니다",
-    "empty_action": "검사 준비 확인하기"
+    "empty_action": "검사 준비 확인하기",
+    "stale": "이 답변은 {date}에 작성하셨습니다",
+    "stale_hint": "금식과 복약은 검사 당일 사실이라야 합니다",
+    "stale_action": "오늘 기준으로 다시 답하기"
   },
 
   "flags": [
@@ -154,14 +168,24 @@
 
   "triage": [
     {
-      "when": "fasting.broken",
+      "when": "fasting.short",
       "level": "tell",
-      "label": "금식 시작 이후 섭취"
+      "label": "금식 시간 부족 (1시간 이내)"
+    },
+    {
+      "when": "fasting.short_over_grace",
+      "level": "call",
+      "label": "금식 시간 부족 (1시간 초과)"
     },
     {
       "when": "diabetes.after_cutoff",
+      "level": "tell",
+      "label": "당뇨약 마지노선 초과 (1시간 이내)"
+    },
+    {
+      "when": "diabetes.after_cutoff_over_grace",
       "level": "call",
-      "label": "당뇨약 마지노선 이후 사용"
+      "label": "당뇨약 마지노선 초과 (1시간 넘음)"
     },
     { "when": "weight.over_limit", "level": "call", "label": "체중 140kg 초과" }
   ],
