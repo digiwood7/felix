@@ -685,12 +685,20 @@ function Select({
         aria-label={label}
         value={value ?? ""}
         onChange={(e) => onSelect(Number(e.target.value))}
-        // 좌우 여백을 같게 주고 가운데 정렬한다. 한쪽만 비워 두면
-        // 화살표 때문에 글자가 왼쪽으로 밀려 두 칸이 어긋나 보인다
-        className={`min-h-[60px] w-full appearance-none rounded-2xl border-2 bg-white px-10 text-center text-[1.24rem] font-bold focus:ring-4 focus:ring-slate-300 ${
+        /**
+         * 고르기 전과 후의 정렬이 다르다.
+         *
+         *   전 — 오른쪽. "시" · "분" 은 값이 아니라 이 칸이 무엇을 받는지
+         *        알려주는 이름표다. 화살표 옆에 붙여 두면 "누르면 열린다"는
+         *        신호가 한 덩어리로 읽힌다
+         *   후 — 가운데. 이제 이 칸의 주인공은 고른 값이다
+         *
+         * 좌우 여백은 항상 같게 준다. 한쪽만 비우면 가운데 정렬이 어긋난다
+         */
+        className={`min-h-[60px] w-full appearance-none rounded-2xl border-2 bg-white px-10 text-[1.24rem] font-bold focus:ring-4 focus:ring-slate-300 ${
           value === null
-            ? "border-slate-500 text-slate-500"
-            : "border-slate-900 text-slate-900"
+            ? "border-slate-500 text-right text-slate-500"
+            : "border-slate-900 text-center text-slate-900"
         }`}
       >
         <option value="" disabled>

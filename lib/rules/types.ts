@@ -204,6 +204,36 @@ export interface NumberField {
 }
 
 /**
+ * 요약카드 문구 — S4 화면이 읽는다 (PRD §8 F2).
+ *
+ * 카드는 문장이 아니라 [항목 : 값] 표다. 직원이 3초 안에 스캔해야 하므로
+ * 값 쪽에 들어갈 말도 짧게 정해 둔다.
+ *
+ * 항목 순서와 표현은 W1 게이트에서 직원 3명이 확정한다. 그때 코드가
+ * 아니라 이 블록만 바뀌어야 한다.
+ */
+export interface CardCopy {
+  title: string;
+  reservation_label: string;
+  location_label: string;
+  rows: Record<"fasting" | "diabetes" | "body" | "female", string>;
+  values: Record<
+    | "fasting_kept"
+    | "fasting_broken"
+    | "none"
+    | "unknown"
+    | "not_applicable"
+    | "unanswered",
+    string
+  >;
+  /** 주의가 필요한 항목을 모아 보여주는 자리의 제목 */
+  reasons_title: string;
+  /** 문답 없이 카드에 바로 들어온 경우 */
+  empty: string;
+  empty_action: string;
+}
+
+/**
  * 환자가 스스로 아는 사실. 해당되면 그 자체로 배지가 된다 (PRD §9.4).
  *
  * 혈당처럼 당일 병원이 측정하는 값은 여기에 넣지 않는다.
@@ -249,6 +279,8 @@ export interface ExamRuleset {
   restrictions: Restriction[];
   /** S3 문답 문구. 문항은 이 블록이 정한다 */
   questions: QuestionCopy;
+  /** S4 요약카드 문구 */
+  card: CardCopy;
   flags: Flag[];
   /** 없어도 flags 만으로 배지가 판정되어야 한다 (PRD §9.4) */
   triage?: TriageRule[];

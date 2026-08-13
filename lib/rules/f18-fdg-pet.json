@@ -123,6 +123,29 @@
     }
   },
 
+  "card": {
+    "title": "접수처에 보여주세요",
+    "reservation_label": "예약",
+    "location_label": "장소",
+    "rows": {
+      "fasting": "금식",
+      "diabetes": "당뇨약 · 인슐린",
+      "body": "키 · 몸무게",
+      "female": "임신 · 수유 · 생리"
+    },
+    "values": {
+      "fasting_kept": "6시간 지켰습니다",
+      "fasting_broken": "지키지 못했습니다",
+      "none": "없음",
+      "unknown": "모름",
+      "not_applicable": "해당 없음",
+      "unanswered": "답하지 않음"
+    },
+    "reasons_title": "접수처에 말씀하실 내용",
+    "empty": "아직 문답에 답하지 않으셨습니다",
+    "empty_action": "검사 준비 확인하기"
+  },
+
   "flags": [
     { "id": "pregnancy", "q": "임신 가능성이 있습니다", "level": "call" },
     { "id": "lactation", "q": "수유 중입니다", "level": "call" },
