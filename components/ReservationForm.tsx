@@ -1,10 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
+import ReservationConfirm from "@/components/ReservationConfirm";
 import { formatReservationParam } from "@/lib/reservationParam";
 import type { ExamRuleset } from "@/lib/rules/types";
+import type { Reservation } from "@/lib/schedule";
 
 /**
  * S1 입력 화면 — PRD §8 F1 · §10
@@ -30,6 +32,12 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
   const [locationId, setLocationId] = useState<string | null>(null);
   const [today, setToday] = useState("");
   const [restored, setRestored] = useState(false);
+
+  // 확인 창에 띄울 값. 열려 있는 동안 폼이 바뀔 일은 없지만,
+  // 무엇을 보고 "네" 를 눌렀는지와 실제로 넘어가는 값이 갈라지지 않도록
+  // 창을 열 때의 값을 그대로 들고 있는다
+  const [pending, setPending] = useState<Reservation | null>(null);
+  const submitRef = useRef<HTMLButtonElement>(null);
 
   // 오늘 날짜와 지난 입력은 마운트 후에 넣는다.
   // 서버와 클라이언트가 달라져 하이드레이션이 깨지는 것을 피한다
@@ -70,15 +78,32 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
 
   const ready = date !== "" && hour !== null && minute !== null && locationId;
 
-  function submit() {
+  /**
+   * 바로 넘어가지 않고 확인 창을 먼저 띄운다.
+   *
+   * 이 화면의 입력 하나가 뒤의 모든 시각을 정한다. 날짜를 하루 잘못 골라도
+   * 타임라인은 아무 일 없다는 듯이 그려지기 때문에, 넘어가기 전에 한 번 묻는다.
+   */
+  function askConfirm() {
     if (!ready) return;
-    const t = formatReservationParam({
+    setPending({
       year: Number(date.slice(0, 4)),
       month: Number(date.slice(5, 7)),
       day: Number(date.slice(8, 10)),
       hour: hour!,
       minute: minute!,
     });
+  }
+
+  function cancelConfirm() {
+    setPending(null);
+    // 창을 닫으면 초점을 열었던 버튼으로 되돌린다 (WCAG 2.4.3)
+    submitRef.current?.focus();
+  }
+
+  function go() {
+    if (!pending) return;
+    const t = formatReservationParam(pending);
 
     // 실제로 쓴 값만 남긴다. 서버가 아니라 이 기기에만 저장된다
     try {
@@ -166,8 +191,9 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
       </p>
 
       <button
+        ref={submitRef}
         type="button"
-        onClick={submit}
+        onClick={askConfirm}
         disabled={!ready}
         className="min-h-[60px] w-full rounded-2xl bg-slate-900 text-[1.35rem] font-bold text-white disabled:bg-slate-300 disabled:text-slate-500"
       >
@@ -179,6 +205,16 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
         <p aria-live="polite" className="-mt-4 text-[1.06rem] text-slate-700">
           날짜 · 시간 · 건물을 모두 선택해 주세요
         </p>
+      )}
+
+      {pending && (
+        <ReservationConfirm
+          reservation={pending}
+          ruleset={ruleset}
+          locationId={locationId}
+          onConfirm={go}
+          onCancel={cancelConfirm}
+        />
       )}
     </div>
   );

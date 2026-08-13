@@ -63,7 +63,8 @@ export interface TimelineDay {
 
 export type Timeline = TimelineDay[];
 
-const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"] as const;
+/** 표기용으로 다른 모듈도 쓴다. 요일 배열이 두 벌이 되면 언젠가 어긋난다 */
+export const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"] as const;
 
 const MS_PER_MINUTE = 60_000;
 
