@@ -22,9 +22,17 @@ function localNetworkAddresses(): string[] {
     .map((iface) => iface!.address);
 }
 
+/**
+ * 같은 Wi-Fi 가 아닌 사람에게 보여줄 때는 LAN IP 로 안 된다.
+ * `cloudflared tunnel --url http://localhost:3000` 으로 임시 공개 주소를 만드는데,
+ * 그때 오는 요청의 호스트가 `*.trycloudflare.com` 이라 여기에 넣어둬야
+ * 위와 같은 이유로 CSS·JS 가 막히지 않는다.
+ */
+const TUNNEL_HOSTS = ["*.trycloudflare.com"];
+
 const nextConfig: NextConfig = {
   // v1은 서버 상태를 갖지 않는다. 이미지 최적화·리라이트 등 추가 설정 없음.
-  allowedDevOrigins: localNetworkAddresses(),
+  allowedDevOrigins: [...localNetworkAddresses(), ...TUNNEL_HOSTS],
 };
 
 export default nextConfig;
