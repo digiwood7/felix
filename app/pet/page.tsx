@@ -1,12 +1,18 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import CalendarButton from "@/components/CalendarButton";
 import CheckCta from "@/components/CheckCta";
+import ShareButton from "@/components/ShareButton";
+import SpeakButton from "@/components/SpeakButton";
 import Timeline from "@/components/Timeline";
+import { buildIcs, icsFilename } from "@/lib/ics";
 import { buildQuestions } from "@/lib/questions";
 import { parseReservationParam } from "@/lib/reservationParam";
 import { f18FdgPet } from "@/lib/rules";
 import { buildTimeline } from "@/lib/schedule";
+import { locationParam, oneParam } from "@/lib/searchParam";
+import { speechScript } from "@/lib/speech";
 
 /**
  * S2 — 개인화 역산 타임라인 (PRD §8 F1)
@@ -21,11 +27,14 @@ import { buildTimeline } from "@/lib/schedule";
 export default async function TimelineScreen({
   searchParams,
 }: {
-  searchParams: Promise<{ t?: string; b?: string }>;
+  searchParams: Promise<{ t?: string | string[]; b?: string | string[] }>;
 }) {
-  const { t, b } = await searchParams;
-  const reservation = parseReservationParam(t);
+  const params = await searchParams;
+  const t = oneParam(params.t);
+  // 룰셋이 아는 건물만 통과시킨다. 아래 링크에 그대로 되돌려 넣기 때문이다
+  const b = locationParam(f18FdgPet, params.b);
 
+  const reservation = parseReservationParam(t);
   if (!reservation) redirect("/");
 
   const timeline = buildTimeline(f18FdgPet, {
@@ -58,9 +67,25 @@ export default async function TimelineScreen({
       </header>
 
       {/* 무엇을 보고 있는지 먼저 말해 준다. 목록부터 들이밀지 않는다 */}
-      <p className="mb-6 text-[1.12rem] leading-relaxed text-slate-700">
+      <p className="mb-4 text-[1.12rem] leading-relaxed text-slate-700">
         {f18FdgPet.intro}
       </p>
+
+      {/* 전달 기능 — 목록 위에 둔다 (PRD §8 F3).
+          듣고 싶은 사람은 읽기 전에 눌러야 하고, 보호자는 화면을 다 읽기
+          전에 보내는 경우가 많다. 아래에 두면 스크롤 끝까지 가야 만난다 */}
+      <div className="mb-6 flex gap-2">
+        <SpeakButton
+          script={speechScript(f18FdgPet, timeline)}
+          copy={f18FdgPet.actions}
+        />
+        <CalendarButton
+          ics={buildIcs(f18FdgPet, timeline, reservation)}
+          filename={icsFilename(f18FdgPet, reservation)}
+          copy={f18FdgPet.actions}
+        />
+        <ShareButton copy={f18FdgPet.actions} />
+      </div>
 
       <Timeline timeline={timeline} ruleset={f18FdgPet} />
 

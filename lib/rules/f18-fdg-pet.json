@@ -137,6 +137,18 @@
     "restored_action": "지우고 새로 입력"
   },
 
+  "actions": {
+    "speak": "읽어주기",
+    "speak_stop": "그만 읽기",
+    "calendar": "잊지 않게 알림 받기",
+    "calendar_file": "pet-checkup",
+    "share": "가족에게 보내기",
+    "share_title": "PET 검사 준비",
+    "copy": "주소 복사",
+    "copied": "주소를 복사했습니다",
+    "copy_manual": "아래 주소를 길게 눌러 복사해 주세요"
+  },
+
   "card": {
     "title": "접수처에 보여주세요",
     "reservation_label": "예약",

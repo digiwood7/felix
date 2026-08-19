@@ -188,6 +188,25 @@ describe("룰셋 — 판정이 아닌 행동 지시", () => {
     }
   });
 
+  /**
+   * 전달 버튼 문구 — "앱" · "서비스" · "AI" 를 쓰지 않는다.
+   *
+   * 고령 환자에게는 그 낱말 자체가 진입 장벽이 된다 (WORKFLOW T13).
+   * 무엇이 일어나는지를 그대로 적는다 — "가족에게 보내기" 처럼.
+   */
+  it("전달 버튼 문구에 앱 · 서비스 · AI 가 없다", () => {
+    const actions = Object.values(f18FdgPet.actions).join(" ");
+    for (const word of ["앱", "서비스", "AI", "공유"]) {
+      expect(actions).not.toContain(word);
+    }
+  });
+
+  it("전달 버튼 문구가 전부 있다", () => {
+    for (const value of Object.values(f18FdgPet.actions)) {
+      expect(value).toBeTruthy();
+    }
+  });
+
   it("flags 의 level 이 전부 유효하다", () => {
     for (const flag of f18FdgPet.flags) {
       expect(LEVELS).toContain(flag.level);

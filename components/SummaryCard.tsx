@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import ShareButton from "@/components/ShareButton";
 import { loadAnswers } from "@/lib/answers";
 import type { StoredAnswers } from "@/lib/answers";
 import { decodeAnswersFromHash } from "@/lib/encode";
@@ -156,6 +157,13 @@ export default function SummaryCard({
         </section>
       )}
 
+      {/* 카드가 끝난 뒤에 둔다. 표와 주의 항목 사이에 끼우면 직원이 훑는
+          한 덩어리가 갈라진다.
+          보호자가 만들어 환자에게 보내는 것이 실제 확산 경로이고(PRD §5),
+          주소에 답이 담겨 있어 받은 사람도 같은 카드를 본다 */}
+      <div className="mt-6 flex">
+        <ShareButton copy={ruleset.actions} />
+      </div>
     </div>
   );
 }

@@ -67,14 +67,16 @@ FDG PET 검사 준비 안내 웹서비스.
 ## 커밋 전 확인
 
 ```bash
-# 금지 표현 — 0건이어야 함
-grep -rn "검사 가능\|검사 불가\|괜찮습니다\|문제없습니다\|판단됩니다" app/ lib/ components/
+# 타입 · 테스트 · TZ 3종 · 금지 표현을 한 번에
+npm run check
 
 # 자유 텍스트 입력 — 0건이어야 함
 grep -rn "<input type=\"text\"\|<textarea" app/ components/
-
-npm test
 ```
+
+금지 표현 검사는 `npm run lint:words` 다. `lib/disclaimer.ts` 만 제외한다 —
+§11 필수 문구("검사 가능 여부를 판단하지 않습니다")가 거기 한 벌만 있다.
+맨손 grep 을 돌리면 그 파일이 잡히는데, 그건 정상이다.
 
 커밋 메시지: `feat:` `fix:` `docs:` `chore:` `test:`
 

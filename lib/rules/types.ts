@@ -252,6 +252,27 @@ export interface CheckCopy {
   restored_action: string;
 }
 
+/**
+ * 전달 기능의 문구 — 공유 · 캘린더 · 읽어주기 (PRD §8 F3).
+ *
+ * "앱" · "서비스" 같은 말을 쓰지 않는다. 고령 환자에게 진입 장벽이 된다
+ * (WORKFLOW T13). 무엇이 일어나는지를 그대로 적는다.
+ */
+export interface ActionCopy {
+  speak: string;
+  speak_stop: string;
+  calendar: string;
+  /** 내려받는 파일 이름의 앞부분. 개인을 가리키는 글자를 넣지 않는다 */
+  calendar_file: string;
+  share: string;
+  /** 공유 시트에 뜨는 제목. 여기에도 의료 판단을 적지 않는다 */
+  share_title: string;
+  copy: string;
+  copied: string;
+  /** 복사 기능조차 없는 환경에서 주소를 직접 집게 할 때 */
+  copy_manual: string;
+}
+
 export interface CardCopy {
   title: string;
   reservation_label: string;
@@ -339,6 +360,8 @@ export interface ExamRuleset {
   questions: QuestionCopy;
   /** S2 → S3 진입 문구 */
   check: CheckCopy;
+  /** 공유 · 캘린더 · 읽어주기 버튼 문구 */
+  actions: ActionCopy;
   /** S4 요약카드 문구 */
   card: CardCopy;
   flags: Flag[];
