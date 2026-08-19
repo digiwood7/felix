@@ -18,16 +18,19 @@
     "ask": "어느 건물에서 검사받으시나요?",
     "hint": "예약 안내문이나 예약 문자에 적혀 있습니다",
     "fallback_text": "지하 1층 핵의학과",
+    "fallback_phone": "1599-3114",
     "options": [
       {
         "id": "main",
         "label": "본관 지하1층",
-        "text": "본관 지하 1층 핵의학과"
+        "text": "본관 지하 1층 핵의학과",
+        "phone": "02)3410-2620"
       },
       {
         "id": "cancer",
         "label": "암병원 지하1층",
-        "text": "암병원 지하 1층 핵의학과"
+        "text": "암병원 지하 1층 핵의학과",
+        "phone": "02)3410-2622"
       }
     ]
   },
@@ -161,9 +164,19 @@
   },
 
   "flags": [
-    { "id": "pregnancy", "q": "임신 가능성이 있습니다", "level": "call" },
-    { "id": "lactation", "q": "수유 중입니다", "level": "call" },
-    { "id": "menstruation", "q": "생리 중입니다", "level": "tell" }
+    {
+      "id": "pregnancy",
+      "q": "임신 가능성이 있습니다",
+      "short": "임신가능성 O",
+      "level": "call"
+    },
+    { "id": "lactation", "q": "수유 중입니다", "short": "수유중", "level": "call" },
+    {
+      "id": "menstruation",
+      "q": "생리 중입니다",
+      "short": "생리중",
+      "level": "tell"
+    }
   ],
 
   "triage": [
@@ -193,6 +206,6 @@
   "levels": {
     "ok": "접수처에 추가로 말씀하실 내용이 없습니다",
     "tell": "접수하실 때 이 화면을 보여주세요",
-    "call": "출발 전에 1599-3114로 먼저 전화해 주세요"
+    "call": "출발 전에 {phone}(으)로 먼저 전화해 주세요"
   }
 }

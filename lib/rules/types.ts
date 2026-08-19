@@ -50,6 +50,13 @@ export interface LocationOption {
   label: string;
   /** 타임라인에 쓰는 전체 표기 */
   text: string;
+  /**
+   * 이 건물 접수처 연락처. 건물마다 다르다.
+   *
+   * 대표번호로 안내하면 환자가 교환을 거쳐 다시 연결되고, 그 사이에
+   * 줄이려던 전화 응대가 오히려 두 번 일어난다.
+   */
+  phone: string;
 }
 
 /**
@@ -63,6 +70,8 @@ export interface Locations {
   hint: string;
   /** 건물을 고르지 않았거나 알 수 없을 때 쓰는 표기 */
   fallback_text: string;
+  /** 건물을 모를 때 쓰는 연락처. 어느 건물이든 닿는 번호라야 한다 */
+  fallback_phone: string;
   options: LocationOption[];
 }
 
@@ -281,7 +290,16 @@ export interface CardCopy {
  */
 export interface Flag {
   id: string;
+  /** 문답 화면에서 고르는 선택지 문구. 환자가 읽는 말이다 */
   q: string;
+  /**
+   * 요약카드 표에 쓰는 짧은 표기.
+   *
+   * 카드는 직원이 3초 안에 훑는 [항목 : 값] 표다. "…있습니다" 가 세 개
+   * 이어지면 좁은 화면에서 네 줄이 되고, 값이 아니라 문장을 읽게 된다.
+   * 환자에게 묻는 말과 직원이 읽는 값은 길이가 달라야 한다.
+   */
+  short: string;
   level: Level;
 }
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { MENSTRUATION_ID, NONE_ID, emptyAnswers } from "./questions";
 import type { Answers } from "./questions";
+import { fillPhone } from "./reservationLabel";
 import { f18FdgPet } from "./rules";
 import type { ExamRuleset } from "./rules/types";
 import { buildTimeline } from "./schedule";
@@ -31,13 +32,23 @@ const TIMELINE = buildTimeline(f18FdgPet, {
   locationId: "cancer",
 });
 
-function verdictOf(patch: Partial<Answers>, ruleset: ExamRuleset = f18FdgPet) {
+function verdictOf(
+  patch: Partial<Answers>,
+  ruleset: ExamRuleset = f18FdgPet,
+  locationId?: string,
+) {
   return triage({
     ruleset,
     answers: { ...emptyAnswers(), ...patch },
     reservation: RESERVATION,
     timeline: TIMELINE,
+    locationId,
   });
+}
+
+/** 룰셋 문구에 그 건물 연락처를 넣은 것. 기대값을 손으로 적지 않는다 */
+function messageOf(level: "ok" | "tell" | "call", locationId?: string) {
+  return fillPhone(f18FdgPet, f18FdgPet.levels[level], locationId);
 }
 
 /** 금식 지킴 · 당뇨 없음 · 정상 체중 · 여성 문항 해당 없음 */
@@ -164,7 +175,7 @@ describe("배지 — call", () => {
       body: { height: 175, weight: 151, unknown: false },
     });
     expect(v.level).toBe("call");
-    expect(v.message).toBe(f18FdgPet.levels.call);
+    expect(v.message).toBe(messageOf("call"));
   });
 
   it("상한과 같은 값은 call 이 아니다 — 초과부터다", () => {
@@ -347,8 +358,75 @@ describe("판정은 룰셋에서만 온다", () => {
       ],
     ] as const) {
       expect(verdictOf(patch).message).toBe(
-        f18FdgPet.levels[level as "ok" | "tell" | "call"],
+        messageOf(level as "ok" | "tell" | "call"),
       );
     }
+  });
+});
+
+/**
+ * 접수처 연락처는 건물마다 다르다.
+ *
+ * 대표번호로 안내하면 환자가 교환을 거쳐 다시 연결되고, 줄이려던
+ * 전화 응대가 오히려 두 번 일어난다. 번호는 룰셋 locations 에서 온다 —
+ * 여기에 건물 이름으로 분기하는 코드가 생기면 검사 확장이 막힌다.
+ */
+describe("배지 — 건물별 연락처", () => {
+  const OVER_LIMIT: Partial<Answers> = {
+    ...CLEAN,
+    body: { height: 175, weight: 151, unknown: false },
+  };
+
+  /**
+   * 화면에 나가는 붙임표는 줄바꿈 없는 것(U+2011)이다 — 번호가 줄 끝에서
+   * 갈라지면 잘못 눌러 다른 곳으로 전화가 간다. 기대값은 보통 붙임표로
+   * 적고 여기서 되돌려 비교한다.
+   */
+  function phoneIn(locationId?: string) {
+    return verdictOf(OVER_LIMIT, f18FdgPet, locationId).message.replaceAll(
+      "‑",
+      "-",
+    );
+  }
+
+  it("본관을 고르면 본관 번호로 안내한다", () => {
+    expect(phoneIn("main")).toContain("02)3410-2620");
+  });
+
+  it("암병원을 고르면 암병원 번호로 안내한다", () => {
+    expect(phoneIn("cancer")).toContain("02)3410-2622");
+  });
+
+  // 공유 링크에 건물이 빠져 있을 수 있다. 그때도 닿는 번호를 준다
+  it("건물을 고르지 않았으면 대표번호로 안내한다", () => {
+    expect(phoneIn()).toContain("1599-3114");
+  });
+
+  // 줄 끝에서 갈라지면 잘못 눌러 다른 곳으로 전화가 간다
+  it("번호 안 붙임표는 줄바꿈되지 않는 글자다", () => {
+    expect(verdictOf(OVER_LIMIT, f18FdgPet, "main").message).not.toContain("-");
+  });
+
+  // 자리표시자가 그대로 화면에 나가는 것이 이 변경의 유일한 실패 모드다
+  it("문구에 자리표시자가 남지 않는다", () => {
+    for (const locationId of ["main", "cancer", undefined, "없는건물"]) {
+      const message = verdictOf(OVER_LIMIT, f18FdgPet, locationId).message;
+      expect(message).not.toContain("{phone}");
+      expect(message).not.toContain("(으)로");
+    }
+  });
+
+  /**
+   * 조사는 앞 숫자를 읽은 소리를 따른다.
+   *   2620 → "공" 으로 끝나 받침이 있다 → 으로
+   *   2622 → "이" 로 끝나 받침이 없다  → 로
+   */
+  it("조사가 번호 끝소리를 따른다", () => {
+    expect(verdictOf(OVER_LIMIT, f18FdgPet, "main").message).toContain(
+      "2620으로",
+    );
+    expect(verdictOf(OVER_LIMIT, f18FdgPet, "cancer").message).toContain(
+      "2622로",
+    );
   });
 });

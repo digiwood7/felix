@@ -90,7 +90,13 @@ export default function SummaryCard({
   }
 
   const answers = stored.answers;
-  const verdict = triage({ ruleset, answers, reservation, timeline });
+  const verdict = triage({
+    ruleset,
+    answers,
+    reservation,
+    timeline,
+    locationId,
+  });
 
   return (
     <div>
@@ -296,14 +302,16 @@ function femaleValue(ruleset: ExamRuleset, a: Answers): string {
   if (!a.female) return v.unanswered;
   if (!a.female.applies) return v.not_applicable;
 
+  // 표에는 짧은 표기를 쓴다. 묻는 말("…있습니다")을 그대로 값 자리에
+  // 넣으면 세 항목이 네 줄이 되어 직원이 훑지 못한다
   const labels = ruleset.flags
     .filter((f) => a.female!.checks.includes(f.id))
     .map((f) => {
       const day = a.female!.menstrualDay;
       // 생리 항목에만 일수가 붙는다. 어느 항목인지는 룰셋 id 로 안다
       return f.id === "menstruation" && day !== null
-        ? `${f.q} (${day}${ruleset.questions.female.day_unit})`
-        : f.q;
+        ? `${f.short} (${day}${ruleset.questions.female.day_unit})`
+        : f.short;
     });
 
   return labels.length > 0 ? labels.join(" · ") : v.not_applicable;

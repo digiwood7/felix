@@ -81,8 +81,28 @@ describe("룰셋 — 현행 실무 기준값", () => {
     }
   });
 
-  it("연락처는 1599-3114", () => {
-    expect(f18FdgPet.levels.call).toContain("1599-3114");
+  /**
+   * 연락처는 건물마다 다르다 (2026-08-19 확인).
+   *   본관 02)3410-2620 · 암병원 02)3410-2622
+   *
+   * 대표번호 1599-3114 는 건물을 모를 때만 쓴다. 대표번호로 안내하면
+   * 환자가 교환을 거쳐 다시 연결되고, 줄이려던 전화 응대가 두 번 일어난다.
+   */
+  it("접수처 연락처는 건물마다 다르다", () => {
+    const phones = Object.fromEntries(
+      f18FdgPet.locations.options.map((o) => [o.id, o.phone]),
+    );
+    expect(phones.main).toBe("02)3410-2620");
+    expect(phones.cancer).toBe("02)3410-2622");
+  });
+
+  it("건물을 모를 때는 대표번호를 쓴다", () => {
+    expect(f18FdgPet.locations.fallback_phone).toBe("1599-3114");
+  });
+
+  // 번호를 문구에 박아 두면 건물별로 갈 수 없다
+  it("call 문구는 번호를 자리표시자로 둔다", () => {
+    expect(f18FdgPet.levels.call).toContain("{phone}");
   });
 
   it("물 단서가 들어 있다 — 같은 날 다른 검사", () => {
@@ -135,6 +155,15 @@ describe("룰셋 — 안전 불변조건", () => {
       "menstruation",
       "pregnancy",
     ]);
+  });
+
+  // 카드는 직원이 3초 안에 훑는 표다. 묻는 말을 값 자리에 그대로 넣으면
+  // 세 항목이 네 줄이 되어 훑을 수 없다
+  it("flags 마다 카드용 짧은 표기가 있다", () => {
+    for (const flag of f18FdgPet.flags) {
+      expect(flag.short).toBeTruthy();
+      expect(flag.short.length).toBeLessThan(flag.q.length);
+    }
   });
 });
 

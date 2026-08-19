@@ -1,4 +1,5 @@
 import type { Answers, TimeAnswer } from "./questions";
+import { fillPhone } from "./reservationLabel";
 import type { ExamRuleset, Level, TriageCondition } from "./rules/types";
 import type { Reservation, Timeline } from "./schedule";
 
@@ -32,12 +33,17 @@ export interface TriageInput {
   answers: Answers;
   reservation: Reservation;
   timeline: Timeline;
+  /**
+   * 선택한 건물. 접수처 연락처가 건물마다 다르므로 call 문구에 들어간다.
+   * 없으면 룰셋의 fallback_phone 을 쓴다.
+   */
+  locationId?: string | null;
 }
 
 const ORDER: Record<Level, number> = { ok: 0, tell: 1, call: 2 };
 
 export function triage(input: TriageInput): Verdict {
-  const { ruleset, answers } = input;
+  const { ruleset, answers, locationId } = input;
 
   const reasons: { label: string; level: Level }[] = [];
 
@@ -61,7 +67,7 @@ export function triage(input: TriageInput): Verdict {
 
   return {
     level,
-    message: ruleset.levels[level],
+    message: fillPhone(ruleset, ruleset.levels[level], locationId),
     // ok 인 항목은 "주의가 필요한 항목"이 아니다
     reasons: reasons.filter((r) => r.level !== "ok"),
   };
