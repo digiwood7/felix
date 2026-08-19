@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import ReservationForm from "@/components/ReservationForm";
 import { parseReservationParam } from "@/lib/reservationParam";
 import { f18FdgPet } from "@/lib/rules";
+import { locationParam, oneParam } from "@/lib/searchParam";
 
 /**
  * S1 — 날짜 · 시각 · 장소 입력 (PRD §10)
@@ -17,9 +18,13 @@ import { f18FdgPet } from "@/lib/rules";
 export default async function InputScreen({
   searchParams,
 }: {
-  searchParams: Promise<{ t?: string; b?: string }>;
+  searchParams: Promise<{ t?: string | string[]; b?: string | string[] }>;
 }) {
-  const { t, b } = await searchParams;
+  const params = await searchParams;
+  const t = oneParam(params.t);
+  // 받은 값을 그대로 주소에 되돌려 넣지 않는다. 제어 문자가 섞여 오면
+  // 리다이렉트 헤더가 깨진다 (`?b=%00`)
+  const b = locationParam(f18FdgPet, params.b);
 
   if (parseReservationParam(t)) {
     redirect(`/pet?t=${t}${b ? `&b=${b}` : ""}`);

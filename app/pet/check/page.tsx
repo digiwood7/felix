@@ -5,6 +5,7 @@ import { parseReservationParam } from "@/lib/reservationParam";
 import { buildQuestions, type ScheduleHints } from "@/lib/questions";
 import { f18FdgPet } from "@/lib/rules";
 import { buildTimeline, type Timeline } from "@/lib/schedule";
+import { locationParam, oneParam } from "@/lib/searchParam";
 
 /**
  * S3 — 상태 문답 (PRD §8 F2)
@@ -21,9 +22,11 @@ import { buildTimeline, type Timeline } from "@/lib/schedule";
 export default async function CheckScreen({
   searchParams,
 }: {
-  searchParams: Promise<{ t?: string; b?: string }>;
+  searchParams: Promise<{ t?: string | string[]; b?: string | string[] }>;
 }) {
-  const { t, b } = await searchParams;
+  const params = await searchParams;
+  const t = oneParam(params.t);
+  const b = locationParam(f18FdgPet, params.b);
 
   const reservation = parseReservationParam(t);
   if (!reservation) redirect("/");

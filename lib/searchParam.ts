@@ -1,3 +1,5 @@
+import type { ExamRuleset } from "./rules/types";
+
 /**
  * 주소 파라미터를 읽는 문 하나.
  *
@@ -13,4 +15,21 @@ export function oneParam(
   value: string | string[] | undefined,
 ): string | undefined {
   return typeof value === "string" ? value : undefined;
+}
+
+/**
+ * 건물 id — **룰셋이 아는 값만 통과시킨다.**
+ *
+ * 받은 값을 그대로 주소에 되돌려 넣으면 안 된다. `?b=%00` 처럼 제어 문자가
+ * 섞여 오면 리다이렉트 헤더가 깨져 500 이 뜬다. 표기에 쓸 때도 모르는
+ * 값이면 어차피 fallback_text 로 떨어지므로, 여기서 한 번에 걸러 둔다.
+ *
+ * 모르는 건물은 "안 고른 것" 으로 본다. 서비스가 건물을 추측하지 않는다.
+ */
+export function locationParam(
+  ruleset: ExamRuleset,
+  value: string | string[] | undefined,
+): string | undefined {
+  const id = oneParam(value);
+  return ruleset.locations.options.some((o) => o.id === id) ? id : undefined;
 }
