@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import SummaryCard from "@/components/SummaryCard";
 import { parseReservationParam } from "@/lib/reservationParam";
 import { f18FdgPet } from "@/lib/rules";
+import { oneParam } from "@/lib/searchParam";
 import { buildTimeline } from "@/lib/schedule";
 
 /**
@@ -14,19 +15,35 @@ import { buildTimeline } from "@/lib/schedule";
  * 계산(타임라인)은 서버에서 하고, 응답은 브라우저에만 있으므로
  * 카드 본문은 클라이언트에서 그린다. 응답이 서버로 가는 경로는 없다.
  *
+ * 문답 응답은 `?a=` 에 실려 온다 (lib/encode.ts). 그래서 이 주소 하나면
+ * 다른 기기에서도 같은 카드가 그려진다 — 서버에 저장한 것은 없다.
+ *
  * 예약 정보가 없으면 카드를 만들 수 없다. S1 으로 되돌린다.
  */
 export default async function CardScreen({
   searchParams,
 }: {
-  searchParams: Promise<{ t?: string; b?: string }>;
+  /**
+   * 같은 이름이 두 번 오면 값은 배열이다 (`?a=1&a=2`). 주소는 사람이
+   * 손으로 고칠 수 있으므로 그 생김새를 타입에 그대로 적어 둔다 —
+   * string 이라고 적어 두면 읽는 쪽이 안심하고 자르다 500 을 낸다.
+   */
+  searchParams: Promise<{
+    t?: string | string[];
+    b?: string | string[];
+    a?: string | string[];
+  }>;
 }) {
-  const { t, b } = await searchParams;
+  const params = await searchParams;
+  const t = oneParam(params.t);
+  const b = oneParam(params.b);
+  const a = oneParam(params.a);
 
   const reservation = parseReservationParam(t);
   if (!reservation) redirect("/");
 
   const timeline = buildTimeline(f18FdgPet, { reservation, locationId: b });
+  // 문답으로 되돌아가는 길에는 옛 답을 달고 가지 않는다
   const query = `?t=${t}${b ? `&b=${b}` : ""}`;
 
   return (
@@ -40,6 +57,7 @@ export default async function CardScreen({
         reservation={reservation}
         timeline={timeline}
         locationId={b}
+        encoded={a}
         checkHref={`/pet/check${query}`}
       />
 

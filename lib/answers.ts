@@ -15,7 +15,10 @@ import { todayInKST } from "./koreanTime";
  * 오래된 카드는 카드가 없는 것보다 나쁘다.
  *
  * 서버로는 아무것도 보내지 않는다 (PRD §8 F2).
- * T9 에서 URL 인코딩이 들어오면 세션 쪽이 그것으로 교체된다.
+ *
+ * T9 부터 당일 응답은 **주소에도 실린다** (lib/encode.ts). 여기 세션은
+ * 같은 기기에서 뒤로 갔다 오는 길을 위한 것이고, 다른 기기에서 열리는
+ * 카드는 주소에 실린 값으로 그려진다. 주소에 답이 있으면 그쪽이 먼저다.
  */
 
 /** 당일 응답. 탭을 닫으면 사라진다 */
@@ -30,9 +33,16 @@ export interface StoredAnswers {
   savedOn: string;
 }
 
-export function saveAnswers(answers: Answers): void {
+/**
+ * 저장한 내용을 그대로 돌려준다.
+ *
+ * 답한 날짜(KST)가 여기서 정해지므로, 부르는 쪽이 그 값을 다시 구하면
+ * 자정 언저리에 두 값이 갈린다. 주소에 실을 것도 이 값이라야 한다.
+ */
+export function saveAnswers(answers: Answers): StoredAnswers {
+  const stored: StoredAnswers = { answers, savedOn: todayInKST() };
+
   try {
-    const stored: StoredAnswers = { answers, savedOn: todayInKST() };
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(stored));
   } catch {
     // 비공개 모드 등. 저장 실패가 흐름을 막지 않는다
@@ -52,6 +62,8 @@ export function saveAnswers(answers: Answers): void {
       // 무시
     }
   }
+
+  return stored;
 }
 
 export function loadAnswers(): StoredAnswers | null {

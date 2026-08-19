@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { loadAnswers } from "@/lib/answers";
 import type { StoredAnswers } from "@/lib/answers";
+import { decodeAnswers } from "@/lib/encode";
 import { toKoreanDateLabel } from "@/lib/koreanTime";
 import type { Answers, TimeAnswer } from "@/lib/questions";
 import {
@@ -27,29 +28,40 @@ import type { Verdict } from "@/lib/triage";
  * 화면에 문장을 새로 만들지 않는다 — 출력은 룰셋 levels 의 행동 지시
  * 3종뿐이고, 검사를 받을 수 있는지 없는지는 어떤 형태로도 말하지 않는다.
  *
- * 응답은 sessionStorage 에서 읽는다. T9 에서 URL 인코딩으로 바뀐다.
+ * 응답은 두 곳에서 온다. **주소가 먼저다** (T9).
+ *   `?a=` 에 실려 온 답  → 다른 기기 · 다른 브라우저에서도 같은 카드
+ *   기기에 남은 답        → 같은 기기에서 뒤로 갔다 오는 길
  */
 export default function SummaryCard({
   ruleset,
   reservation,
   timeline,
   locationId,
+  encoded,
   checkHref,
 }: {
   ruleset: ExamRuleset;
   reservation: Reservation;
   timeline: Timeline;
   locationId?: string;
+  /** 주소에 실려 온 문답 응답. 형식이 어긋나면 없는 것으로 본다 */
+  encoded?: string;
   checkHref: string;
 }) {
-  // 서버에는 응답이 없다. 마운트 후에 읽어야 화면이 어긋나지 않는다
-  const [stored, setStored] = useState<StoredAnswers | null>(null);
-  const [loaded, setLoaded] = useState(false);
+  const fromUrl = decodeAnswers(ruleset, encoded);
+
+  // 기기에 남은 답은 서버에 없다. 마운트 후에 읽어야 화면이 어긋나지 않는다
+  const [fromDevice, setFromDevice] = useState<StoredAnswers | null>(null);
+  const [checkedDevice, setCheckedDevice] = useState(false);
 
   useEffect(() => {
-    setStored(loadAnswers());
-    setLoaded(true);
+    setFromDevice(loadAnswers());
+    setCheckedDevice(true);
   }, []);
+
+  const stored = fromUrl ?? fromDevice;
+  // 주소에 답이 있으면 기기를 볼 것도 없이 그릴 수 있다
+  const loaded = fromUrl !== null || checkedDevice;
 
   const card = ruleset.card;
 

@@ -34,6 +34,7 @@ export default async function CheckScreen({
   return (
     <main className="flex flex-1 flex-col px-4 pt-5 pb-8">
       <QuestionFlow
+        ruleset={f18FdgPet}
         questions={buildQuestions(f18FdgPet, hintsOf(timeline))}
         backHref={backHref}
         restoredCopy={f18FdgPet.check}

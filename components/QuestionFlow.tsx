@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { clearBody, loadBody, saveAnswers } from "@/lib/answers";
+import { encodeAnswers } from "@/lib/encode";
 import type { Answers, DayRef, Question, TimeAnswer } from "@/lib/questions";
 import {
   MENSTRUATION_ID,
@@ -12,7 +13,7 @@ import {
   isAnswered,
   isValidNumber,
 } from "@/lib/questions";
-import type { NumberField, TimeCopy } from "@/lib/rules/types";
+import type { ExamRuleset, NumberField, TimeCopy } from "@/lib/rules/types";
 
 /**
  * S3 문답 — PRD §8 F2 · §10
@@ -27,10 +28,13 @@ import type { NumberField, TimeCopy } from "@/lib/rules/types";
  * 자유 텍스트 입력이 하나도 없다. 응답은 서버로 보내지 않는다.
  */
 export default function QuestionFlow({
+  ruleset,
   questions,
   backHref,
   restoredCopy,
 }: {
+  /** 답을 주소에 실을 때 항목 자리번호를 여기서 읽는다 (lib/encode.ts) */
+  ruleset: ExamRuleset;
   questions: Question[];
   backHref: string;
   /** 지난번 키 · 몸무게를 불러왔을 때 보여줄 문구 */
@@ -75,8 +79,19 @@ export default function QuestionFlow({
   function goNext(current: Answers = answers) {
     if (!isAnswered(question, current)) return;
     if (isLast) {
-      saveAnswers(current);
-      router.push(`/pet/card${window.location.search}`);
+      /**
+       * 답을 주소에 실어 카드로 넘어간다.
+       *
+       * 서버에 저장하지 않고도 카드를 다시 열고 남에게 보낼 수 있게 하는
+       * 방법은 이것뿐이다 (PRD §8 F3). 보호자가 만들어 환자에게 보내는 것이
+       * 실제 확산 경로이므로, 카드 주소 하나로 화면이 재현되어야 한다.
+       *
+       * set 이다 — 이미 붙어 있는 a 가 있으면 갈아 끼운다. 붙이기만 하면
+       * 문답을 다시 하고 온 사람의 주소에 옛 답이 함께 남는다.
+       */
+      const params = new URLSearchParams(window.location.search);
+      params.set("a", encodeAnswers(ruleset, saveAnswers(current)));
+      router.push(`/pet/card?${params.toString()}`);
     } else {
       setStep(step + 1);
     }
