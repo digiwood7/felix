@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import type { StoredAnswers } from "./answers";
-import { FORMAT_VERSION, decodeAnswers, encodeAnswers } from "./encode";
+import {
+  FORMAT_VERSION,
+  answersHash,
+  decodeAnswers,
+  decodeAnswersFromHash,
+  encodeAnswers,
+} from "./encode";
 import type { Answers } from "./questions";
 import { NONE_ID, emptyAnswers } from "./questions";
 import { f18FdgPet } from "./rules";
@@ -293,6 +299,58 @@ describe("인코딩 — 망가진 주소", () => {
     ];
     for (const bad of junk) {
       expect(() => decodeAnswers(f18FdgPet, bad)).not.toThrow();
+    }
+  });
+});
+
+/**
+ * 답은 물음표가 아니라 우물정 뒤에 붙는다.
+ *
+ * 우물정 뒤는 브라우저가 서버로 보내지 않는다. 물음표 뒤에 두면 카드를
+ * 열 때마다 키 · 몸무게 · 임신 여부가 액세스 로그에 남는다.
+ */
+describe("인코딩 — 주소 조각", () => {
+  it("우물정으로 시작한다", () => {
+    expect(answersHash(f18FdgPet, FULL)).toMatch(/^#a=/);
+  });
+
+  it("조각을 그대로 넣으면 답이 돌아온다", () => {
+    const hash = answersHash(f18FdgPet, FULL);
+    expect(decodeAnswersFromHash(f18FdgPet, hash)).toEqual(FULL);
+  });
+
+  it("앞의 우물정이 없어도 읽는다", () => {
+    const hash = answersHash(f18FdgPet, FULL).slice(1);
+    expect(decodeAnswersFromHash(f18FdgPet, hash)).toEqual(FULL);
+  });
+
+  // 메신저가 주소를 손대면 퍼센트 인코딩이 섞여 들어온다
+  it("퍼센트 인코딩이 섞여도 읽는다", () => {
+    const encoded = encodeAnswers(f18FdgPet, FULL);
+    expect(
+      decodeAnswersFromHash(f18FdgPet, `#a=${encodeURIComponent(encoded)}`),
+    ).toEqual(FULL);
+  });
+
+  it("조각이 없거나 다른 이름이면 null", () => {
+    for (const bad of [
+      "",
+      "#",
+      "#b=1-20260820-y-n--",
+      "1-20260820-y-n--",
+      undefined,
+      null,
+      ["#a=1-20260820-y-n--"],
+    ]) {
+      expect(() => decodeAnswersFromHash(f18FdgPet, bad)).not.toThrow();
+      expect(decodeAnswersFromHash(f18FdgPet, bad)).toBeNull();
+    }
+  });
+
+  // `%` 가 깨진 채로 오면 decodeURIComponent 가 던진다
+  it("깨진 퍼센트 기호에도 던지지 않는다", () => {
+    for (const bad of ["#a=%", "#a=%zz", "#a=1-2026%-y-n--"]) {
+      expect(() => decodeAnswersFromHash(f18FdgPet, bad)).not.toThrow();
     }
   });
 });

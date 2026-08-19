@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { clearBody, loadBody, saveAnswers } from "@/lib/answers";
-import { encodeAnswers } from "@/lib/encode";
+import { answersHash } from "@/lib/encode";
 import type { Answers, DayRef, Question, TimeAnswer } from "@/lib/questions";
 import {
   MENSTRUATION_ID,
@@ -80,18 +80,20 @@ export default function QuestionFlow({
     if (!isAnswered(question, current)) return;
     if (isLast) {
       /**
-       * 답을 주소에 실어 카드로 넘어간다.
+       * 답을 주소 조각에 실어 카드로 넘어간다.
        *
        * 서버에 저장하지 않고도 카드를 다시 열고 남에게 보낼 수 있게 하는
        * 방법은 이것뿐이다 (PRD §8 F3). 보호자가 만들어 환자에게 보내는 것이
        * 실제 확산 경로이므로, 카드 주소 하나로 화면이 재현되어야 한다.
        *
-       * set 이다 — 이미 붙어 있는 a 가 있으면 갈아 끼운다. 붙이기만 하면
-       * 문답을 다시 하고 온 사람의 주소에 옛 답이 함께 남는다.
+       * 물음표가 아니라 우물정에 담는다 — 우물정 뒤는 서버로 가지 않으므로
+       * 키 · 몸무게 · 임신 여부가 액세스 로그에 남지 않는다.
        */
       const params = new URLSearchParams(window.location.search);
-      params.set("a", encodeAnswers(ruleset, saveAnswers(current)));
-      router.push(`/pet/card?${params.toString()}`);
+      // 예약 일시와 건물만 물음표 뒤에 남긴다. 답은 조각으로 간다
+      params.delete("a");
+      const hash = answersHash(ruleset, saveAnswers(current));
+      router.push(`/pet/card?${params.toString()}${hash}`);
     } else {
       setStep(step + 1);
     }

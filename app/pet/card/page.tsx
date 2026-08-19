@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import SummaryCard from "@/components/SummaryCard";
 import { parseReservationParam } from "@/lib/reservationParam";
 import { f18FdgPet } from "@/lib/rules";
-import { oneParam } from "@/lib/searchParam";
+import { locationParam, oneParam } from "@/lib/searchParam";
 import { buildTimeline } from "@/lib/schedule";
 
 /**
@@ -15,8 +15,9 @@ import { buildTimeline } from "@/lib/schedule";
  * 계산(타임라인)은 서버에서 하고, 응답은 브라우저에만 있으므로
  * 카드 본문은 클라이언트에서 그린다. 응답이 서버로 가는 경로는 없다.
  *
- * 문답 응답은 `?a=` 에 실려 온다 (lib/encode.ts). 그래서 이 주소 하나면
- * 다른 기기에서도 같은 카드가 그려진다 — 서버에 저장한 것은 없다.
+ * 문답 응답은 `#a=` 조각에 실려 온다 (lib/encode.ts). 그래서 이 주소
+ * 하나면 다른 기기에서도 같은 카드가 그려진다 — 서버에 저장한 것도 없고,
+ * **조각은 서버로 전송되지도 않는다.** 그래서 여기서는 읽지 않는다.
  *
  * 예약 정보가 없으면 카드를 만들 수 없다. S1 으로 되돌린다.
  */
@@ -24,20 +25,15 @@ export default async function CardScreen({
   searchParams,
 }: {
   /**
-   * 같은 이름이 두 번 오면 값은 배열이다 (`?a=1&a=2`). 주소는 사람이
+   * 같은 이름이 두 번 오면 값은 배열이다 (`?t=1&t=2`). 주소는 사람이
    * 손으로 고칠 수 있으므로 그 생김새를 타입에 그대로 적어 둔다 —
    * string 이라고 적어 두면 읽는 쪽이 안심하고 자르다 500 을 낸다.
    */
-  searchParams: Promise<{
-    t?: string | string[];
-    b?: string | string[];
-    a?: string | string[];
-  }>;
+  searchParams: Promise<{ t?: string | string[]; b?: string | string[] }>;
 }) {
   const params = await searchParams;
   const t = oneParam(params.t);
-  const b = oneParam(params.b);
-  const a = oneParam(params.a);
+  const b = locationParam(f18FdgPet, params.b);
 
   const reservation = parseReservationParam(t);
   if (!reservation) redirect("/");
@@ -57,7 +53,6 @@ export default async function CardScreen({
         reservation={reservation}
         timeline={timeline}
         locationId={b}
-        encoded={a}
         checkHref={`/pet/check${query}`}
       />
 

@@ -9,13 +9,21 @@ import type { ExamRuleset } from "./rules/types";
  * 서버에 아무것도 저장하지 않으면서 카드를 다시 열고 남에게 보낼 수 있게
  * 하는 방법은 하나뿐이다. **상태를 주소에 담는 것.**
  *
- *   /pet/card?t=202608201425&b=main&a=1-20260820-y-n-168.62-y02.4
- *                                     └─────────┬─────────┘
- *                                        이 파일이 만드는 부분
+ *   /pet/card?t=202608201425&b=main#a=1-20260820-y-n-168x62-y02.4
+ *                                  │  └────────┬─────────┘
+ *                                  │    이 파일이 만드는 부분
+ *                                  └ 물음표가 아니라 우물정이다
+ *
+ * **`?` 가 아니라 `#` 인 이유.** 우물정 뒤는 브라우저가 서버로 보내지
+ * 않는다. 물음표 뒤에 두면 카드를 열 때마다 키 · 몸무게 · 임신 여부가
+ * 서버 액세스 로그에 남는다. 이름도 등록번호도 없으니 심의 대상은
+ * 아니지만, 자유 텍스트를 금지한 원칙의 근거가 "URL · 공유 · 로그 세 곳"
+ * 인데 그 중 로그를 굳이 열어 둘 이유가 없다. 링크에는 그대로 붙어 있어서
+ * 공유 · QR 은 똑같이 동작한다.
  *
  * 형식 — `-` 로 나눈 여섯 칸. 빈 칸은 "아직 답하지 않음" 이다.
  *
- *   1-20260820-y-n-168.62-y02.4
+ *   1-20260820-y-n-168x62-y02.4
  *   │ │        │ │ │      └ 여성 문항: 해당됨 · flags[0]·flags[2] · 생리 4일째
  *   │ │        │ │ └ 키 168 · 몸무게 62
  *   │ │        │ └ 당뇨약 · 인슐린: 쓰지 않음
@@ -72,6 +80,50 @@ const NONE_MARK = "_";
  * 사람이 눈으로 훑을 때도 주소가 두 번 시작하는 것처럼 보인다.
  */
 const UNKNOWN_MARK = "_";
+
+/** 주소 조각의 이름. `#a=...` */
+const HASH_KEY = "a";
+
+/**
+ * 카드 주소에 붙일 조각. `#a=1-20260820-...`
+ *
+ * 이 문자열은 서버로 가지 않는다. 링크에는 붙어 있으므로 카톡으로
+ * 보내면 상대 브라우저가 읽는다.
+ */
+export function answersHash(
+  ruleset: ExamRuleset,
+  stored: StoredAnswers,
+): string {
+  return `#${HASH_KEY}=${encodeAnswers(ruleset, stored)}`;
+}
+
+/**
+ * `window.location.hash` 에서 답을 읽는다.
+ *
+ * 앞의 `#` 이 있든 없든 받는다. 퍼센트 인코딩이 섞여 들어오면 풀어서
+ * 읽되, 풀다 실패해도 던지지 않는다 — 메신저가 주소를 손대는 일이 있다.
+ */
+export function decodeAnswersFromHash(
+  ruleset: ExamRuleset,
+  hash: unknown,
+): StoredAnswers | null {
+  if (typeof hash !== "string") return null;
+
+  const raw = hash.startsWith("#") ? hash.slice(1) : hash;
+  const prefix = `${HASH_KEY}=`;
+  if (!raw.startsWith(prefix)) return null;
+
+  const value = raw.slice(prefix.length);
+
+  let decoded = value;
+  try {
+    decoded = decodeURIComponent(value);
+  } catch {
+    // `%` 가 깨진 채로 왔다. 있는 그대로 읽어 본다
+  }
+
+  return decodeAnswers(ruleset, decoded);
+}
 
 export function encodeAnswers(
   ruleset: ExamRuleset,
