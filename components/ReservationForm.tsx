@@ -127,7 +127,9 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
           <button
             type="button"
             onClick={clearSaved}
-            className="min-h-[44px] font-bold text-slate-900 underline underline-offset-4"
+            // 44px 은 iOS 권장치다. PRD §13 은 48px 을 쓴다 — 고령 사용자
+            // 기준이므로 더 큰 쪽을 따른다
+            className="min-h-[48px] font-bold text-slate-900 underline underline-offset-4"
           >
             지우고 새로 선택
           </button>

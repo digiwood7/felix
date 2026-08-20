@@ -580,6 +580,22 @@ app/api/log/route.ts 에 익명 이벤트 수집 엔드포인트를 만들어줘
 - [ ] **kill switch 동작 확인** — `NEXT_PUBLIC_SERVICE_STATUS=maintenance` 로 전 화면 대체
 - [ ] `TZ=UTC`, `TZ=America/New_York` 에서도 계산 결과 동일
 
+> **측정 방법 주의 (2026-08-20):** Chrome DevTools/CDP 의 네트워크 스로틀링은
+> **loopback 에 적용되지 않는다.** 50Kbps 와 10Mbps 의 로딩 시간이 똑같이 나오므로,
+> `localhost` 를 그냥 조여서 잰 3G 수치는 전부 무의미하다. 대역폭을 실제로 나눠
+> 보내는 프록시를 앞에 세우고 재야 한다. CPU 감속(`Emulation.setCPUThrottlingRate`)은
+> loopback 에서도 정상 동작하므로 그대로 쓴다.
+>
+> **실측 결과 (프로덕션 빌드, 캐시 없음, CPU 4배 감속)**
+>
+> | 회선 | FCP | 전체 load | 전송량 |
+> |---|---|---|---|
+> | 3G 보통 (1.6Mbps / 150ms) | 484~528ms | 약 1.1초 | 약 150KB |
+> | 3G 느림 (400Kbps / 400ms) | 960~980ms | 약 2.3초 | 약 150KB |
+>
+> 기준인 "첫 화면 표시"는 FCP 로 본다. 느린 3G 에서도 1초 안에 글자가 뜬다.
+> 전체 load 가 2.3초인 것은 JS 가 뒤따라 오기 때문이고, 그전에 타임라인은 이미 읽힌다.
+
 **커밋** — `fix: 접근성 및 성능 기준 충족`
 
 ---

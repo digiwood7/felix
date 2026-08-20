@@ -119,7 +119,9 @@ function Item({
       <div className="min-w-0 flex-1 px-4 py-4">
         <div className="mb-1.5 flex items-center gap-2">
           <span
-            className={`rounded-md px-2 py-0.5 text-[0.94rem] font-bold text-white ${style.badge}`}
+            // PRD §13 본문 최소 17px = 1rem. 종류 표시는 작아도 된다고
+            // 생각하기 쉽지만, 이 배지가 "금식인지 복약인지" 를 가른다
+            className={`rounded-md px-2 py-0.5 text-[1rem] font-bold text-white ${style.badge}`}
           >
             {label}
           </span>

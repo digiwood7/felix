@@ -31,6 +31,8 @@ export default function RootLayout({
       <html lang="ko">
         <body>
           <Maintenance />
+          {/* 점검 화면도 화면이다 — PRD §11 은 예외를 두지 않는다 */}
+          <Disclaimer />
         </body>
       </html>
     );

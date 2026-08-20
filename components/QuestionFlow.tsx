@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 import { clearBody, loadBody, saveAnswers } from "@/lib/answers";
 import { answersHash } from "@/lib/encode";
@@ -128,7 +128,9 @@ export default function QuestionFlow({
                 });
                 setRestored(false);
               }}
-              className="min-h-[44px] font-bold text-slate-900 underline underline-offset-4"
+              // 44px 은 iOS 권장치다. PRD §13 은 48px 을 쓴다 — 고령 사용자
+              // 기준이므로 더 큰 쪽을 따른다
+              className="min-h-[48px] font-bold text-slate-900 underline underline-offset-4"
             >
               {restoredCopy.restored_action}
             </button>
@@ -597,10 +599,21 @@ function NumberInput({
   onChange: (v: number | null) => void;
 }) {
   const invalid = value !== null && !isValidNumber(field, value);
+  /**
+   * 라벨이 입력을 가리키게 한다.
+   *
+   * htmlFor 가 없으면 label 은 아무것도 라벨링하지 않는 빈 껍데기가 된다.
+   * "키" 를 눌러도 숫자판이 뜨지 않고, 손이 떨리는 사용자가 좁은 입력칸을
+   * 정확히 찍어야 한다. 붙여 두면 글자까지 터치 영역이 된다.
+   */
+  const inputId = useId();
 
   return (
     <div>
-      <label className="mb-2 block text-[1.18rem] font-bold text-slate-900">
+      <label
+        htmlFor={inputId}
+        className="mb-2 block text-[1.18rem] font-bold text-slate-900"
+      >
         {field.label}
       </label>
       <div
@@ -613,6 +626,7 @@ function NumberInput({
         } focus-within:ring-4 focus-within:ring-slate-300`}
       >
         <input
+          id={inputId}
           type="number"
           inputMode="numeric"
           min={field.min}
