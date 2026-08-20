@@ -4,7 +4,7 @@
   "timezone": "Asia/Seoul",
   "duration_min": 80,
 
-  "intro": "검사를 위한 주의사항을 날짜와 시간별로 알려드리겠습니다",
+  "intro": "PET 검사를 위한 주의사항을 날짜와 시간별로 알려드리겠습니다",
 
   "labels": {
     "restriction": "주의",
@@ -38,7 +38,8 @@
   "arrival": {
     "before_min": 20,
     "round": "floor_10min",
-    "text": "{location} 도착",
+    "text": "{location}로 오셔야 합니다",
+    "speech_text": "{time}까지 {location}로 오셔야 합니다",
     "notes": [
       "접수 시 혈당을 측정합니다",
       "혈당이 200을 넘으면 검사 일정을 다시 잡습니다"
@@ -46,7 +47,8 @@
   },
 
   "exam": {
-    "text": "검사 시작 — 약 {duration} 소요"
+    "text": "검사 시작 — 약 {duration} 소요",
+    "speech_text": "검사 시작, 약 {duration} 소요됩니다"
   },
 
   "fasting": {
@@ -69,6 +71,7 @@
       "grace_h": 1,
       "round": "floor_hour",
       "text": "당뇨약 · 인슐린을 쓰신다면 이 시각까지만 사용 가능합니다",
+      "speech_text": "당뇨약과 인슐린을 쓰신다면, 이 시각까지만 사용 가능합니다",
       "after_text": "이후에 사용하셨다면 접수처에 꼭 말씀해 주세요"
     }
   ],

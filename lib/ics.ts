@@ -19,10 +19,6 @@ import type { Reservation, Timeline, TimelineItem } from "./schedule";
 
 const TZID = "Asia/Seoul";
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
-const MS_PER_MINUTE = 60_000;
-
-/** 금식 시작은 시점이다. 캘린더에서 보이게만 하고 길게 잡지 않는다 */
-const FASTING_BLOCK_MIN = 30;
 
 /** RFC 5545 는 한 줄을 75옥텟으로 제한한다 */
 const LINE_OCTETS = 75;
@@ -30,18 +26,13 @@ const LINE_OCTETS = 75;
 interface IcsEvent {
   /** KST 벽시계를 UTC 로 간주한 epoch (lib/schedule.ts 와 같은 방식) */
   start: number;
-  end: number;
   summary: string;
   description: string[];
   uid: string;
 }
 
-export function buildIcs(
-  ruleset: ExamRuleset,
-  timeline: Timeline,
-  reservation: Reservation,
-): string {
-  const events = collectEvents(ruleset, timeline, reservation);
+export function buildIcs(ruleset: ExamRuleset, timeline: Timeline): string {
+  const events = collectEvents(ruleset, timeline);
 
   const lines = [
     "BEGIN:VCALENDAR",
@@ -63,37 +54,31 @@ export function icsFilename(ruleset: ExamRuleset, r: Reservation): string {
   return `${ruleset.actions.calendar_file}-${pad(r.year, 4)}${pad(r.month)}${pad(r.day)}.ics`;
 }
 
-function collectEvents(
-  ruleset: ExamRuleset,
-  timeline: Timeline,
-  reservation: Reservation,
-): IcsEvent[] {
+/**
+ * 두 일정 모두 **시점 하나**로 찍는다. 길이를 주지 않는다.
+ *
+ * 금식은 "이 시각 이후" 라 끝이 없고, 도착은 "이 시각까지 오세요" 라
+ * 끝이 없다. 길이를 붙이면 캘린더가 `09:00~09:30` 처럼 띠로 그리는데,
+ * 그 뒤쪽 시각은 안내지에 없는 값이라 환자가 "9시 30분까지는 먹어도
+ * 되나" 로 읽을 여지가 생긴다. 서비스가 만들어 낸 시각은 주지 않는다.
+ *
+ * 규격상으로도 이쪽이 맞다 — DTEND 없이 DTSTART 만 있는 일정은
+ * "같은 시각에 끝나는" 일정이다 (RFC 5545 3.6.1). DTEND 를 DTSTART 와
+ * 같게 적는 것은 오히려 위반이다 (3.8.2.2 — DTEND 는 뒤여야 한다).
+ */
+function collectEvents(ruleset: ExamRuleset, timeline: Timeline): IcsEvent[] {
   const events: IcsEvent[] = [];
 
-  const fasting = findItem(timeline, "fasting");
-  if (fasting) {
-    const start = epochOf(fasting.date, fasting.item.time!);
-    events.push({
-      start,
-      end: start + FASTING_BLOCK_MIN * MS_PER_MINUTE,
-      summary: summaryOf(ruleset, fasting.item),
-      description: fasting.item.notes,
-      uid: uidOf(ruleset, "fasting", start),
-    });
-  }
+  for (const kind of ["fasting", "arrival"] as const) {
+    const found = findItem(timeline, kind);
+    if (!found) continue;
 
-  const arrival = findItem(timeline, "arrival");
-  if (arrival) {
-    const start = epochOf(arrival.date, arrival.item.time!);
-    // 도착부터 검사가 끝날 때까지를 통째로 잡는다. 그래야 그 시간에
-    // 다른 일정을 잡지 않는다 — 환자가 실제로 묻는 것 중 하나다
-    const end = toEpoch(reservation) + ruleset.duration_min * MS_PER_MINUTE;
+    const start = epochOf(found.date, found.item.time!);
     events.push({
       start,
-      end: end > start ? end : start + MS_PER_MINUTE,
-      summary: summaryOf(ruleset, arrival.item),
-      description: arrival.item.notes,
-      uid: uidOf(ruleset, "arrival", start),
+      summary: summaryOf(ruleset, found.item),
+      description: found.item.notes,
+      uid: uidOf(ruleset, kind, start),
     });
   }
 
@@ -130,8 +115,8 @@ function eventBlock(event: IcsEvent, all: IcsEvent[]): string[] {
     // 넣으면 같은 예약에서 매번 다른 파일이 나와 테스트가 흔들리고,
     // 기기 시계가 계산 결과에 스며드는 통로가 하나 생긴다 (PRD §9.2)
     `DTSTAMP:${formatUtc(Math.min(...all.map((e) => e.start)))}`,
+    // DTEND 를 적지 않는다. 이 일정은 길이가 아니라 시점이다
     `DTSTART;TZID=${TZID}:${formatLocal(event.start)}`,
-    `DTEND;TZID=${TZID}:${formatLocal(event.end)}`,
     `SUMMARY:${escapeText(event.summary)}`,
     `DESCRIPTION:${escapeText([...event.description, DISCLAIMER].join("\n"))}`,
     "BEGIN:VALARM",
@@ -174,10 +159,6 @@ function timezoneBlock(): string[] {
  */
 function uidOf(ruleset: ExamRuleset, kind: string, epoch: number): string {
   return `${ruleset.id}-${kind}-${formatLocal(epoch)}@pet-time`;
-}
-
-function toEpoch(r: Reservation): number {
-  return Date.UTC(r.year, r.month - 1, r.day, r.hour, r.minute);
 }
 
 /** "2026-08-20" + "02:00" → KST 벽시계를 UTC 로 간주한 epoch */

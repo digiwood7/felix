@@ -291,7 +291,7 @@ describe("8. 문구는 룰셋에서 읽는다", () => {
 
   it("도착 지시문에 선택한 건물이 들어간다", () => {
     expect(find(timeline, "arrival").text).toBe(
-      "암병원 지하 1층 핵의학과 도착",
+      "암병원 지하 1층 핵의학과로 오셔야 합니다",
     );
   });
 
@@ -315,7 +315,9 @@ describe("9. 건물 미선택 fallback", () => {
     const timeline = buildTimeline(f18FdgPet, {
       reservation: at(2026, 8, 6, 8, 25),
     });
-    expect(find(timeline, "arrival").text).toBe("지하 1층 핵의학과 도착");
+    expect(find(timeline, "arrival").text).toBe(
+      "지하 1층 핵의학과로 오셔야 합니다",
+    );
   });
 
   it("모르는 건물 id 여도 크래시하지 않는다", () => {
@@ -323,7 +325,9 @@ describe("9. 건물 미선택 fallback", () => {
       reservation: at(2026, 8, 6, 8, 25),
       locationId: "없는건물",
     });
-    expect(find(timeline, "arrival").text).toBe("지하 1층 핵의학과 도착");
+    expect(find(timeline, "arrival").text).toBe(
+      "지하 1층 핵의학과로 오셔야 합니다",
+    );
   });
 });
 

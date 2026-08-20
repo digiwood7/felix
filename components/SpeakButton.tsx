@@ -15,17 +15,46 @@ import type { ActionCopy } from "@/lib/rules/types";
  * 나는 버튼은 고령 사용자에게 "고장난 화면" 으로 읽히고, 그 인상은 화면
  * 전체로 번진다. 안드로이드는 기기별로 한국어 음성이 없는 경우가 있다.
  */
+/**
+ * 읽는 속도. 1 이 기본이고 낮을수록 느리다.
+ *
+ * 이 화면의 독자는 처음 듣는 지시를 받아 적는 사람이고, 대부분 고령이다.
+ * 기본 속도로는 "오전 9시" 를 듣고 적는 사이에 다음 문장이 지나간다.
+ */
+const RATE = 0.7;
+
+/**
+ * 날짜가 바뀔 때 쉬는 길이.
+ *
+ * 화면에서는 날짜 경계가 빈 줄과 굵은 글씨로 보이지만 소리에는 그것이
+ * 없다. 여기서 쉬지 않으면 전날 할 일과 검사 당일 할 일이 한 덩어리로
+ * 들린다 — 이 서비스가 없애려는 바로 그 혼동이다.
+ */
+const BLOCK_PAUSE_MS = 800;
+
 export default function SpeakButton({
-  script,
+  blocks,
   copy,
 }: {
-  /** lib/speech.ts 가 만든 원고. 화면에 보이는 것과 같은 내용이다 */
-  script: string;
+  /**
+   * lib/speech.ts 가 만든 원고. 화면에 보이는 것과 같은 내용이다.
+   * 한 도막이 하루치이고, 도막 사이에서 쉰다.
+   */
+  blocks: string[];
   copy: ActionCopy;
 }) {
   const [hasVoice, setHasVoice] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const synthRef = useRef<SpeechSynthesis | null>(null);
+  /**
+   * 지금 읽고 있는 회차. 멈추거나 다시 시작하면 올라간다.
+   *
+   * 도막 사이를 기다리는 동안 사용자가 멈출 수 있다. 회차가 바뀐 뒤에
+   * 깨어난 타이머는 아무 일도 하지 않는다 — 안 그러면 멈춘 뒤에 다음
+   * 날짜가 혼자 읽히기 시작한다.
+   */
+  const runRef = useRef(0);
+  const timerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const synth = window.speechSynthesis;
@@ -48,11 +77,15 @@ export default function SpeakButton({
     return () => {
       synth.removeEventListener("voiceschanged", check);
       // 화면을 떠나면 멈춘다. 안 그러면 다음 화면에서 소리만 계속 난다
+      runRef.current += 1;
+      if (timerRef.current !== null) window.clearTimeout(timerRef.current);
       synth.cancel();
     };
   }, []);
 
   function stop() {
+    runRef.current += 1;
+    if (timerRef.current !== null) window.clearTimeout(timerRef.current);
     synthRef.current?.cancel();
     setSpeaking(false);
   }
@@ -62,14 +95,29 @@ export default function SpeakButton({
     if (!synth) return;
 
     synth.cancel();
+    setSpeaking(true);
+    // 첫 도막은 누른 그 자리에서 넣는다. iOS 는 손이 닿은 순간에 시작한
+    // 소리만 허용하고, 그 뒤로는 열어 준다
+    speakBlock(0, ++runRef.current);
+  }
+
+  function speakBlock(index: number, run: number) {
+    const synth = synthRef.current;
+    if (!synth || run !== runRef.current) return;
+
+    const block = blocks[index];
+    if (block === undefined) {
+      setSpeaking(false);
+      return;
+    }
 
     /**
-     * 통째로 넘기지 않고 문장 단위로 끊어 넣는다.
+     * 도막을 통째로 넘기지 않고 문장 단위로 끊어 넣는다.
      *
      * 긴 문장 하나를 넘기면 중간에 끊기는 브라우저가 있다. 끊어 넣으면
      * 그 문제를 피하면서 문장 사이 쉬는 자리도 자연스러워진다.
      */
-    const parts = script.split(". ");
+    const parts = block.split(". ");
     const chunks = parts.map((part, i) =>
       i < parts.length - 1 ? `${part}.` : part,
     );
@@ -77,16 +125,22 @@ export default function SpeakButton({
     chunks.forEach((chunk, i) => {
       const utterance = new SpeechSynthesisUtterance(chunk);
       utterance.lang = "ko-KR";
-      // 조금 느리게. 이 화면의 독자는 처음 듣는 지시를 받아 적는 사람이다
-      utterance.rate = 0.95;
+      utterance.rate = RATE;
       if (i === chunks.length - 1) {
-        utterance.onend = () => setSpeaking(false);
+        // 한 도막이 끝났다. 한 템포 쉬고 다음 날짜로 넘어간다
+        utterance.onend = () => {
+          if (run !== runRef.current) return;
+          timerRef.current = window.setTimeout(
+            () => speakBlock(index + 1, run),
+            BLOCK_PAUSE_MS,
+          );
+        };
       }
-      utterance.onerror = () => setSpeaking(false);
+      utterance.onerror = () => {
+        if (run === runRef.current) setSpeaking(false);
+      };
       synth.speak(utterance);
     });
-
-    setSpeaking(true);
   }
 
   if (!hasVoice) return null;

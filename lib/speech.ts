@@ -17,6 +17,11 @@ import type { Timeline } from "./schedule";
  *   "02:00"  → 기계가 "영이 콜론 영영" 으로 읽는다
  *   "·"      → 읽지 못하거나 "가운뎃점" 이라고 읽는다
  *   줄바꿈    → 소리에는 없다. 문장 끝을 마침표로 만들어 줘야 쉰다
+ *
+ * **날짜 단위로 끊어 돌려준다.** 화면에서는 날짜가 바뀌는 것이 빈 줄과
+ * 굵은 글씨로 보이지만 소리에는 그 경계가 없다. 마침표 하나로는 "전날"
+ * 과 "검사 당일" 이 이어져 들려, 오늘 할 일과 내일 할 일이 섞인다.
+ * 쉬는 길이는 화면(components/SpeakButton.tsx)이 정한다.
  */
 
 /** 소리로는 구분되지 않는 기호. 쉼표로 바꿔 쉬는 자리를 만든다 */
@@ -24,26 +29,50 @@ const SEPARATORS = /[·•∙]/g;
 /** 줄표는 읽지 않는다. 앞뒤가 붙어 들리지 않게 쉼표로 바꾼다 */
 const DASHES = /\s*[—–-]\s*/g;
 
-export function speechScript(
+/** 룰셋 speech_text 안의 이 자리에 그 항목의 시각이 말로 들어간다 */
+const TIME_SLOT = "{time}";
+
+/**
+ * 한 도막 = 쉬지 않고 이어 읽는 덩어리. 도막과 도막 사이에서 쉰다.
+ *
+ * 첫머리 안내 · 날짜별 하루 · Disclaimer 가 각각 한 도막이다.
+ */
+export function speechBlocks(
   ruleset: ExamRuleset,
   timeline: Timeline,
-): string {
-  const sentences: string[] = [ruleset.intro];
+): string[] {
+  const blocks: string[][] = [[ruleset.intro]];
 
   for (const day of timeline) {
-    sentences.push(`${toKoreanDateLabel(day.date)} ${day.weekday}요일`);
+    const sentences: string[] = [
+      `${toKoreanDateLabel(day.date)} ${day.weekday}요일`,
+    ];
 
     for (const item of day.items) {
-      sentences.push(item.allDay ? "하루 종일" : toKoreanTimeLabel(item.time!));
-      sentences.push(item.text);
+      const time = item.allDay ? "하루 종일" : toKoreanTimeLabel(item.time!);
+      const spoken = item.speechText ?? item.text;
+
+      if (spoken.includes(TIME_SLOT)) {
+        // 시각을 문장 안으로 들인다. "오후 3시. 도착." 이 아니라
+        // "오후 3시까지 오셔야 합니다." 로 한 문장이 된다
+        sentences.push(spoken.replace(TIME_SLOT, time));
+      } else {
+        sentences.push(time);
+        sentences.push(spoken);
+      }
+
       sentences.push(...item.notes);
     }
+
+    blocks.push(sentences);
   }
 
   // 화면 하단에 늘 있는 문장이다. 듣기만 하는 사람에게도 닿아야 한다
-  sentences.push(DISCLAIMER);
+  blocks.push([DISCLAIMER]);
 
-  return sentences.map(forSpeech).filter(Boolean).join(" ");
+  return blocks
+    .map((sentences) => sentences.map(forSpeech).filter(Boolean).join(" "))
+    .filter(Boolean);
 }
 
 /**

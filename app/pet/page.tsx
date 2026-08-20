@@ -12,7 +12,7 @@ import { parseReservationParam } from "@/lib/reservationParam";
 import { f18FdgPet } from "@/lib/rules";
 import { buildTimeline } from "@/lib/schedule";
 import { locationParam, oneParam } from "@/lib/searchParam";
-import { speechScript } from "@/lib/speech";
+import { speechBlocks } from "@/lib/speech";
 
 /**
  * S2 — 개인화 역산 타임라인 (PRD §8 F1)
@@ -76,11 +76,11 @@ export default async function TimelineScreen({
           전에 보내는 경우가 많다. 아래에 두면 스크롤 끝까지 가야 만난다 */}
       <div className="mb-6 flex gap-2">
         <SpeakButton
-          script={speechScript(f18FdgPet, timeline)}
+          blocks={speechBlocks(f18FdgPet, timeline)}
           copy={f18FdgPet.actions}
         />
         <CalendarButton
-          ics={buildIcs(f18FdgPet, timeline, reservation)}
+          ics={buildIcs(f18FdgPet, timeline)}
           filename={icsFilename(f18FdgPet, reservation)}
           copy={f18FdgPet.actions}
         />

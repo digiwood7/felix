@@ -75,11 +75,27 @@ export interface Locations {
   options: LocationOption[];
 }
 
+/**
+ * 낭독 전용 문구 — 있으면 읽어주기가 `text` 대신 이것을 읽는다.
+ *
+ * 화면과 소리는 같은 내용을 담되 같은 글자일 필요는 없다. 화면은 훑는
+ * 것이라 짧은 표기가 낫고, 소리는 흘러가는 것이라 조사와 쉼표가 있어야
+ * 문장이 선다. 화면 문구를 소리에 맞춰 늘리면 목록이 무거워지고, 소리를
+ * 화면에 맞춰 줄이면 "쓰신다면 이 시각" 처럼 붙어 들린다.
+ *
+ * `{time}` 을 쓰면 그 자리에 이 항목의 시각이 말로 들어가고, 시각을
+ * 따로 읽지 않는다 — "오후 3시. 도착." 대신 "오후 3시까지 오셔야 합니다."
+ * 화면에는 시각이 이미 왼쪽에 큰 글씨로 있으므로 이 결합은 소리에만 있다.
+ */
+type SpeechText = string;
+
 export interface Arrival {
   before_min: number;
   round: RoundMode;
   /** `{location}` 자리에 선택한 건물 표기가 들어간다 */
   text: string;
+  /** `{location}` · `{time}` 을 쓸 수 있다 */
+  speech_text?: SpeechText;
   /**
    * 도착 항목에 붙는 보조 설명. **한 줄에 한 문장씩** 넣는다.
    *
@@ -96,6 +112,8 @@ export interface Arrival {
 export interface Exam {
   /** `{duration}` 자리에 소요시간 표기가 들어간다 */
   text: string;
+  /** `{duration}` · `{time}` 을 쓸 수 있다 */
+  speech_text?: SpeechText;
 }
 
 export interface Fasting {
@@ -112,6 +130,8 @@ export interface Fasting {
   round: RoundMode;
   /** 지시문 */
   text: string;
+  /** `{time}` 을 쓸 수 있다 */
+  speech_text?: SpeechText;
   /** 보조 설명. 실행 조언이지 판정이 아니다 */
   note?: string;
   /** note를 이 시각 구간에서만 표시한다. 시작 포함, 끝 미포함 */
@@ -140,6 +160,8 @@ export interface ConditionalRule {
   grace_h?: number;
   round: RoundMode;
   text: string;
+  /** `{time}` 을 쓸 수 있다 */
+  speech_text?: SpeechText;
   after_text: string;
 }
 
@@ -148,6 +170,8 @@ export interface Restriction {
   from: RestrictionFrom;
   display: RestrictionDisplay;
   text: string;
+  /** `{time}` 을 쓸 수 있다 */
+  speech_text?: SpeechText;
 }
 
 /**

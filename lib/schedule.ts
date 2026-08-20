@@ -50,6 +50,13 @@ export interface TimelineItem {
   time: string | null;
   allDay: boolean;
   text: string;
+  /**
+   * 낭독 전용 문구. 없으면(null) 읽어주기가 `text` 를 그대로 읽는다.
+   *
+   * `{time}` 자리는 lib/speech.ts 가 채운다 — 시각을 말로 바꾸는 것은
+   * 소리 쪽의 일이고, 화면은 이 문구를 쓰지 않는다.
+   */
+  speechText: string | null;
   notes: string[];
 }
 
@@ -178,6 +185,7 @@ export function buildTimeline(
         time: null,
         allDay: true,
         text: restriction.text,
+        speechText: restriction.speech_text ?? null,
         notes: [],
       },
     });
@@ -214,6 +222,7 @@ export function buildTimeline(
       time: timeOf(fastingEpoch),
       allDay: false,
       text: fasting.text,
+      speechText: fasting.speech_text ?? null,
       notes: fastingNotes,
     },
   });
@@ -233,6 +242,7 @@ export function buildTimeline(
         time: timeOf(epoch),
         allDay: false,
         text: rule.text,
+        speechText: rule.speech_text ?? null,
         notes: [rule.after_text],
       },
     });
@@ -245,6 +255,8 @@ export function buildTimeline(
     arrival.round,
   );
 
+  const location = resolveLocation(ruleset, input.locationId);
+
   placed.push({
     epoch: arrivalEpoch,
     date: dateOf(arrivalEpoch),
@@ -253,10 +265,8 @@ export function buildTimeline(
       id: "arrival",
       time: timeOf(arrivalEpoch),
       allDay: false,
-      text: arrival.text.replace(
-        "{location}",
-        resolveLocation(ruleset, input.locationId),
-      ),
+      text: arrival.text.replace("{location}", location),
+      speechText: arrival.speech_text?.replace("{location}", location) ?? null,
       notes: arrival.notes ?? [],
     },
   });
@@ -274,6 +284,11 @@ export function buildTimeline(
         "{duration}",
         formatDuration(ruleset.duration_min),
       ),
+      speechText:
+        ruleset.exam.speech_text?.replace(
+          "{duration}",
+          formatDuration(ruleset.duration_min),
+        ) ?? null,
       notes: [],
     },
   });

@@ -25,8 +25,10 @@ const RESERVATION: Reservation = {
 };
 
 function icsOf(reservation: Reservation = RESERVATION, locationId = "main") {
-  const timeline = buildTimeline(f18FdgPet, { reservation, locationId });
-  return buildIcs(f18FdgPet, timeline, reservation);
+  return buildIcs(
+    f18FdgPet,
+    buildTimeline(f18FdgPet, { reservation, locationId }),
+  );
 }
 
 /** 접힌 줄을 원래대로 이어 붙인다. 내용을 확인할 때 쓴다 */
@@ -64,9 +66,15 @@ describe("캘린더 — 시각", () => {
     expect(lines).toContain("DTSTART;TZID=Asia/Seoul:20260820T080000");
   });
 
-  // 도착부터 검사가 끝날 때까지를 잡는다. 08:25 + 80분 = 09:45
-  it("도착 일정은 검사가 끝나는 시각까지다", () => {
-    expect(lines).toContain("DTEND;TZID=Asia/Seoul:20260820T094500");
+  /**
+   * 두 일정 모두 길이가 없다.
+   *
+   * 띠로 그려지면 그 끝 시각이 안내지에 없는 값인데도 지시처럼 읽힌다 —
+   * "9시 30분까지는 먹어도 되나". 서비스가 만들어 낸 시각은 주지 않는다.
+   */
+  it("끝나는 시각을 적지 않는다 — 길이가 아니라 시점이다", () => {
+    expect(lines.some((l) => l.startsWith("DTEND"))).toBe(false);
+    expect(lines.some((l) => l.startsWith("DURATION"))).toBe(false);
   });
 
   it("일정은 금식과 도착 두 개다", () => {
@@ -79,10 +87,8 @@ describe("캘린더 — 시각", () => {
    * 보인다. 이 지시는 "서울 벽시계로 2시" 이지 어떤 절대 순간이 아니다.
    */
   it("모든 일정 시각이 서울 기준으로 적힌다", () => {
-    const stamps = eventLines(icsOf()).filter(
-      (l) => l.startsWith("DTSTART") || l.startsWith("DTEND"),
-    );
-    expect(stamps).toHaveLength(4);
+    const stamps = eventLines(icsOf()).filter((l) => l.startsWith("DTSTART"));
+    expect(stamps).toHaveLength(2);
 
     for (const line of stamps) {
       expect(line).toContain("TZID=Asia/Seoul");
@@ -158,7 +164,7 @@ describe("캘린더 — 규격", () => {
   it("접은 줄을 이어 붙이면 원문이 그대로 나온다", () => {
     const summaries = unfold(ics).filter((l) => l.startsWith("SUMMARY:"));
     expect(summaries[0]).toContain("이 시각 이후 아무것도 드시지 마세요");
-    expect(summaries[1]).toContain("핵의학과 도착");
+    expect(summaries[1]).toContain("핵의학과로 오셔야 합니다");
   });
 
   it("글자 중간에서 자르지 않는다 — 깨진 글자가 없다", () => {
