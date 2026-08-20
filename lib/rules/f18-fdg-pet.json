@@ -17,8 +17,6 @@
   "locations": {
     "ask": "어느 건물에서 검사받으시나요?",
     "hint": "예약 안내문이나 예약 문자에 적혀 있습니다",
-    "fallback_text": "지하 1층 핵의학과",
-    "fallback_phone": "1599-3114",
     "options": [
       {
         "id": "main",

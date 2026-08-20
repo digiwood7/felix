@@ -1,6 +1,11 @@
 import type { Answers, TimeAnswer } from "./questions";
 import { fillPhone } from "./reservationLabel";
-import type { ExamRuleset, Level, TriageCondition } from "./rules/types";
+import type {
+  ExamRuleset,
+  Level,
+  LocationOption,
+  TriageCondition,
+} from "./rules/types";
 import type { Reservation, Timeline } from "./schedule";
 
 /**
@@ -35,15 +40,17 @@ export interface TriageInput {
   timeline: Timeline;
   /**
    * 선택한 건물. 접수처 연락처가 건물마다 다르므로 call 문구에 들어간다.
-   * 없으면 룰셋의 fallback_phone 을 쓴다.
+   *
+   * 필수다. 번호를 모르는 채로 "전화해 주세요" 를 띄우면 그 문구가
+   * 하는 일이 없어지고, 대표번호로 대신 안내하면 교환을 한 번 더 거친다.
    */
-  locationId?: string | null;
+  location: LocationOption;
 }
 
 const ORDER: Record<Level, number> = { ok: 0, tell: 1, call: 2 };
 
 export function triage(input: TriageInput): Verdict {
-  const { ruleset, answers, locationId } = input;
+  const { ruleset, answers, location } = input;
 
   const reasons: { label: string; level: Level }[] = [];
 
@@ -67,7 +74,7 @@ export function triage(input: TriageInput): Verdict {
 
   return {
     level,
-    message: fillPhone(ruleset, ruleset.levels[level], locationId),
+    message: fillPhone(ruleset.levels[level], location),
     // ok 인 항목은 "주의가 필요한 항목"이 아니다
     reasons: reasons.filter((r) => r.level !== "ok"),
   };

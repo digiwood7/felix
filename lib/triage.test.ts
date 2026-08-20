@@ -27,28 +27,33 @@ const RESERVATION: Reservation = {
   minute: 25,
 };
 
+
+/** 건물은 필수 입력이다 */
+const locationOf = (id: string) =>
+  f18FdgPet.locations.options.find((o) => o.id === id)!;
+
 const TIMELINE = buildTimeline(f18FdgPet, {
   reservation: RESERVATION,
-  locationId: "cancer",
+  location: locationOf("cancer"),
 });
 
 function verdictOf(
   patch: Partial<Answers>,
   ruleset: ExamRuleset = f18FdgPet,
-  locationId?: string,
+  locationId = "cancer",
 ) {
   return triage({
     ruleset,
     answers: { ...emptyAnswers(), ...patch },
     reservation: RESERVATION,
     timeline: TIMELINE,
-    locationId,
+    location: locationOf(locationId),
   });
 }
 
 /** 룰셋 문구에 그 건물 연락처를 넣은 것. 기대값을 손으로 적지 않는다 */
-function messageOf(level: "ok" | "tell" | "call", locationId?: string) {
-  return fillPhone(f18FdgPet, f18FdgPet.levels[level], locationId);
+function messageOf(level: "ok" | "tell" | "call", locationId = "cancer") {
+  return fillPhone(f18FdgPet.levels[level], locationOf(locationId));
 }
 
 /** 금식 지킴 · 당뇨 없음 · 정상 체중 · 여성 문항 해당 없음 */
@@ -382,7 +387,7 @@ describe("배지 — 건물별 연락처", () => {
    * 갈라지면 잘못 눌러 다른 곳으로 전화가 간다. 기대값은 보통 붙임표로
    * 적고 여기서 되돌려 비교한다.
    */
-  function phoneIn(locationId?: string) {
+  function phoneIn(locationId = "cancer") {
     return verdictOf(OVER_LIMIT, f18FdgPet, locationId).message.replaceAll(
       "‑",
       "-",
@@ -397,9 +402,11 @@ describe("배지 — 건물별 연락처", () => {
     expect(phoneIn("cancer")).toContain("02)3410-2622");
   });
 
-  // 공유 링크에 건물이 빠져 있을 수 있다. 그때도 닿는 번호를 준다
-  it("건물을 고르지 않았으면 대표번호로 안내한다", () => {
-    expect(phoneIn()).toContain("1599-3114");
+  // 대체 번호를 두지 않는다. 건물이 없으면 화면 자체가 그려지지 않는다
+  it("두 건물 중 하나의 번호만 나온다", () => {
+    const phones = f18FdgPet.locations.options.map((o) => o.phone);
+    expect(phones).toContain(phoneIn("main").match(/02\)[\d-]+/)?.[0]);
+    expect(phoneIn("cancer")).not.toContain("1599");
   });
 
   // 줄 끝에서 갈라지면 잘못 눌러 다른 곳으로 전화가 간다
@@ -408,9 +415,11 @@ describe("배지 — 건물별 연락처", () => {
   });
 
   // 자리표시자가 그대로 화면에 나가는 것이 이 변경의 유일한 실패 모드다
+  // 모르는 건물은 여기까지 오지 못한다 — 주소를 읽는 문에서 걸러지고
+  // (lib/searchParam.ts), 걸러지면 화면이 S1 으로 되돌아간다
   it("문구에 자리표시자가 남지 않는다", () => {
-    for (const locationId of ["main", "cancer", undefined, "없는건물"]) {
-      const message = verdictOf(OVER_LIMIT, f18FdgPet, locationId).message;
+    for (const option of f18FdgPet.locations.options) {
+      const message = verdictOf(OVER_LIMIT, f18FdgPet, option.id).message;
       expect(message).not.toContain("{phone}");
       expect(message).not.toContain("(으)로");
     }

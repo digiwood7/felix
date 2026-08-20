@@ -38,9 +38,18 @@ export default async function TimelineScreen({
   const reservation = parseReservationParam(t);
   if (!reservation) redirect("/");
 
+  /**
+   * 건물을 모르면 화면을 그리지 않는다.
+   *
+   * 접수처 연락처가 건물마다 다르다(본관 · 암병원). 모르는 채로 그리면
+   * 어느 한쪽 번호를 고르거나 대표번호를 내놓게 되는데, 둘 다 추측이다.
+   * S1 은 건물 선택이 필수이므로 되돌리면 바로 고르게 된다.
+   */
+  if (!b) redirect("/");
+
   const timeline = buildTimeline(f18FdgPet, {
     reservation,
-    locationId: b,
+    location: b,
   });
 
   const examDay = timeline[timeline.length - 1];
@@ -97,7 +106,7 @@ export default async function TimelineScreen({
           문항 수도 손으로 적지 않는다 — 문답이 바뀌면 이 줄이 먼저 거짓말을 한다 */}
       <CheckCta
         copy={f18FdgPet.check}
-        href={`/pet/check?t=${t}${b ? `&b=${b}` : ""}`}
+        href={`/pet/check?t=${t}&b=${b.id}`}
         examDate={examDay.date}
         questionCount={buildQuestions(f18FdgPet).length}
       />

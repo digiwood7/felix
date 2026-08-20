@@ -1,5 +1,6 @@
 import type {
   ExamRuleset,
+  LocationOption,
   RoundMode,
   TimeOfDay,
   TimelineItemKind,
@@ -39,8 +40,13 @@ export interface Reservation {
 
 export interface TimelineInput {
   reservation: Reservation;
-  /** 룰셋 locations.options 의 id. 없으면 건물명 없이 표기한다 */
-  locationId?: string;
+  /**
+   * 검사받을 건물. 주소를 읽는 문에서 이미 해석되어 들어온다.
+   *
+   * id 가 아니라 건물 자체를 받는다 — 여기서 다시 찾으면 "모르는 건물"
+   * 이라는 경우가 생기고, 그 경우의 답을 화면마다 따로 정하게 된다.
+   */
+  location: LocationOption;
 }
 
 export interface TimelineItem {
@@ -154,11 +160,6 @@ function itemsLine(template: string, items: string[]): string {
   return template.replace("{items}", items.join(", "));
 }
 
-function resolveLocation(ruleset: ExamRuleset, locationId?: string): string {
-  const found = ruleset.locations.options.find((o) => o.id === locationId);
-  return found?.text ?? ruleset.locations.fallback_text;
-}
-
 interface Placed {
   epoch: number | null;
   /** 종일 항목이 놓이는 날짜 */
@@ -255,7 +256,7 @@ export function buildTimeline(
     arrival.round,
   );
 
-  const location = resolveLocation(ruleset, input.locationId);
+  const location = input.location.text;
 
   placed.push({
     epoch: arrivalEpoch,

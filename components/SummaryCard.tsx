@@ -16,7 +16,7 @@ import {
   formatReservationDate,
   formatReservationTime,
 } from "@/lib/reservationLabel";
-import type { ExamRuleset, Level } from "@/lib/rules/types";
+import type { ExamRuleset, Level, LocationOption } from "@/lib/rules/types";
 import type { Reservation, Timeline } from "@/lib/schedule";
 import { triage } from "@/lib/triage";
 import type { Verdict } from "@/lib/triage";
@@ -42,13 +42,14 @@ export default function SummaryCard({
   ruleset,
   reservation,
   timeline,
-  locationId,
+  location,
   checkHref,
 }: {
   ruleset: ExamRuleset;
   reservation: Reservation;
   timeline: Timeline;
-  locationId?: string;
+  /** 검사받을 건물. 배지의 접수처 연락처가 여기서 나온다 */
+  location: LocationOption;
   checkHref: string;
 }) {
   const [stored, setStored] = useState<StoredAnswers | null>(null);
@@ -91,12 +92,12 @@ export default function SummaryCard({
             answers: fresh.answers,
             reservation,
             timeline,
-            locationId,
+            location,
           }).level
         : null,
       answers: fresh ? answerCodes(ruleset, fresh.answers) : null,
     });
-  }, [loaded, stored, ruleset, reservation, timeline, locationId]);
+  }, [loaded, stored, ruleset, reservation, timeline, location]);
 
   const card = ruleset.card;
 
@@ -142,7 +143,7 @@ export default function SummaryCard({
     answers,
     reservation,
     timeline,
-    locationId,
+    location,
   });
 
   return (
@@ -157,7 +158,7 @@ export default function SummaryCard({
           {formatReservationTime(reservation)}
         </p>
         <p className="mt-1 text-[1.06rem] text-slate-300">
-          {formatLocation(ruleset, locationId)}
+          {formatLocation(location)}
         </p>
       </header>
 

@@ -24,10 +24,14 @@ const RESERVATION: Reservation = {
   minute: 25,
 };
 
+/** 건물은 필수 입력이다 */
+const locationOf = (id: string) =>
+  f18FdgPet.locations.options.find((o) => o.id === id)!;
+
 function icsOf(reservation: Reservation = RESERVATION, locationId = "main") {
   return buildIcs(
     f18FdgPet,
-    buildTimeline(f18FdgPet, { reservation, locationId }),
+    buildTimeline(f18FdgPet, { reservation, location: locationOf(locationId) }),
   );
 }
 

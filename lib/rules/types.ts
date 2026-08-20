@@ -68,10 +68,14 @@ export interface LocationOption {
 export interface Locations {
   ask: string;
   hint: string;
-  /** 건물을 고르지 않았거나 알 수 없을 때 쓰는 표기 */
-  fallback_text: string;
-  /** 건물을 모를 때 쓰는 연락처. 어느 건물이든 닿는 번호라야 한다 */
-  fallback_phone: string;
+  /**
+   * 검사를 받을 수 있는 건물 전부.
+   *
+   * 건물을 모르는 상태를 위한 대체 표기·대체 번호를 두지 않는다.
+   * 연락처가 건물마다 다르므로(본관 · 암병원), 모르는 채로 번호를 내면
+   * 그건 추측이다. S1 에서 건물 선택이 필수이고, 주소에 건물이 없으면
+   * 화면을 그리지 않고 S1 으로 되돌린다.
+   */
   options: LocationOption[];
 }
 

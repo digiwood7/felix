@@ -79,19 +79,14 @@ describe("formatReservationTimeKorean", () => {
 });
 
 describe("formatLocation", () => {
+  // 건물을 모르는 경우가 없다 — 해석은 주소를 읽는 문에서 한 번만 하고
+  // (lib/searchParam.ts), 통과하지 못하면 화면이 그려지지 않는다
   it("룰셋의 건물 문구를 읽는다", () => {
-    expect(formatLocation(f18FdgPet, "main")).toBe("본관 지하 1층 핵의학과");
-    expect(formatLocation(f18FdgPet, "cancer")).toBe(
+    const locationOf = (id: string) =>
+      f18FdgPet.locations.options.find((o) => o.id === id)!;
+    expect(formatLocation(locationOf("main"))).toBe("본관 지하 1층 핵의학과");
+    expect(formatLocation(locationOf("cancer"))).toBe(
       "암병원 지하 1층 핵의학과",
-    );
-  });
-
-  it("고르지 않았거나 모르는 값이면 룰셋 fallback 을 쓴다", () => {
-    expect(formatLocation(f18FdgPet, null)).toBe(
-      f18FdgPet.locations.fallback_text,
-    );
-    expect(formatLocation(f18FdgPet, "unknown")).toBe(
-      f18FdgPet.locations.fallback_text,
     );
   });
 });

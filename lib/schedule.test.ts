@@ -4,6 +4,9 @@ import { f18FdgPet } from "./rules";
 import { buildTimeline } from "./schedule";
 import type { Reservation, Timeline } from "./schedule";
 
+/** 건물은 필수 입력이다. 시각 계산과는 무관하므로 하나를 고정해 쓴다 */
+const CANCER = f18FdgPet.locations.options.find((o) => o.id === "cancer")!;
+
 /**
  * T3 경계값 테스트 — R5(치명적) 대응
  *
@@ -28,7 +31,7 @@ function at(
 }
 
 function timelineFor(reservation: Reservation): Timeline {
-  return buildTimeline(f18FdgPet, { reservation, locationId: "cancer" });
+  return buildTimeline(f18FdgPet, { reservation, location: CANCER });
 }
 
 /** 항목을 날짜와 함께 찾는다 */
@@ -234,7 +237,7 @@ describe("7. 금식 보조 문구 — 룰셋이 정의했을 때만 붙는다", 
   function notesOf(ruleset: typeof f18FdgPet, reservation: Reservation) {
     const timeline = buildTimeline(ruleset, {
       reservation,
-      locationId: "cancer",
+      location: CANCER,
     });
     return find(timeline, "fasting").notes;
   }
@@ -310,24 +313,19 @@ describe("8. 문구는 룰셋에서 읽는다", () => {
   });
 });
 
-describe("9. 건물 미선택 fallback", () => {
-  it("건물을 고르지 않으면 건물명 없이 표기한다", () => {
+describe("9. 건물은 고른 대로 표기된다", () => {
+  // 건물을 모르는 상태는 없다 — 주소를 읽는 문에서 걸러지고,
+  // 화면은 건물이 없으면 S1 으로 되돌린다 (app/pet/page.tsx)
+  it.each([
+    ["main", "본관 지하 1층 핵의학과로 오셔야 합니다"],
+    ["cancer", "암병원 지하 1층 핵의학과로 오셔야 합니다"],
+  ])("%s 을 고르면 그 건물로 표기한다", (id, expected) => {
+    const location = f18FdgPet.locations.options.find((o) => o.id === id)!;
     const timeline = buildTimeline(f18FdgPet, {
       reservation: at(2026, 8, 6, 8, 25),
+      location,
     });
-    expect(find(timeline, "arrival").text).toBe(
-      "지하 1층 핵의학과로 오셔야 합니다",
-    );
-  });
-
-  it("모르는 건물 id 여도 크래시하지 않는다", () => {
-    const timeline = buildTimeline(f18FdgPet, {
-      reservation: at(2026, 8, 6, 8, 25),
-      locationId: "없는건물",
-    });
-    expect(find(timeline, "arrival").text).toBe(
-      "지하 1층 핵의학과로 오셔야 합니다",
-    );
+    expect(find(timeline, "arrival").text).toBe(expected);
   });
 });
 

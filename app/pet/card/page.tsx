@@ -37,10 +37,12 @@ export default async function CardScreen({
 
   const reservation = parseReservationParam(t);
   if (!reservation) redirect("/");
+  // 건물이 없으면 배지의 연락처를 정할 수 없다 (app/pet/page.tsx 주석 참고)
+  if (!b) redirect("/");
 
-  const timeline = buildTimeline(f18FdgPet, { reservation, locationId: b });
+  const timeline = buildTimeline(f18FdgPet, { reservation, location: b });
   // 문답으로 되돌아가는 길에는 옛 답을 달고 가지 않는다
-  const query = `?t=${t}${b ? `&b=${b}` : ""}`;
+  const query = `?t=${t}&b=${b.id}`;
 
   return (
     <main className="flex-1 px-4 pt-5 pb-8">
@@ -52,7 +54,7 @@ export default async function CardScreen({
         ruleset={f18FdgPet}
         reservation={reservation}
         timeline={timeline}
-        locationId={b}
+        location={b}
         checkHref={`/pet/check${query}`}
       />
 

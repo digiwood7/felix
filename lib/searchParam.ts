@@ -1,4 +1,4 @@
-import type { ExamRuleset } from "./rules/types";
+import type { ExamRuleset, LocationOption } from "./rules/types";
 
 /**
  * 주소 파라미터를 읽는 문 하나.
@@ -18,18 +18,24 @@ export function oneParam(
 }
 
 /**
- * 건물 id — **룰셋이 아는 값만 통과시킨다.**
+ * 건물 — **룰셋이 아는 값만 통과시키고, 통과한 것은 해석해서 돌려준다.**
  *
- * 받은 값을 그대로 주소에 되돌려 넣으면 안 된다. `?b=%00` 처럼 제어 문자가
- * 섞여 오면 리다이렉트 헤더가 깨져 500 이 뜬다. 표기에 쓸 때도 모르는
- * 값이면 어차피 fallback_text 로 떨어지므로, 여기서 한 번에 걸러 둔다.
+ * id 문자열이 아니라 건물 자체를 돌려주는 것이 요점이다. 접수처 연락처는
+ * 건물마다 다르고(본관 · 암병원), 화면 코드가 id 를 들고 다니면 그리는
+ * 순간마다 "이 id 를 모르면 어쩌지" 를 다시 정해야 한다. 그 자리가 여러 개면
+ * 언젠가 한 곳이 다른 답을 낸다 — 틀린 번호로 전화가 가는 방향으로.
+ *
+ * 해석을 이 문 하나로 모으면 그 뒤로는 "건물을 모르는 상태" 가 없다.
+ *
+ * 받은 값을 그대로 주소에 되돌려 넣지 않기 위한 문이기도 하다. `?b=%00`
+ * 처럼 제어 문자가 섞여 오면 리다이렉트 헤더가 깨져 500 이 뜬다.
  *
  * 모르는 건물은 "안 고른 것" 으로 본다. 서비스가 건물을 추측하지 않는다.
  */
 export function locationParam(
   ruleset: ExamRuleset,
   value: string | string[] | undefined,
-): string | undefined {
+): LocationOption | undefined {
   const id = oneParam(value);
-  return ruleset.locations.options.some((o) => o.id === id) ? id : undefined;
+  return ruleset.locations.options.find((o) => o.id === id);
 }

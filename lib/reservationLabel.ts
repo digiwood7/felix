@@ -1,6 +1,6 @@
 import type { Reservation } from "./schedule";
 import { WEEKDAYS } from "./schedule";
-import type { ExamRuleset } from "./rules/types";
+import type { LocationOption } from "./rules/types";
 
 /**
  * 예약 일시 · 장소를 사람이 읽는 문자열로 바꾼다.
@@ -46,14 +46,12 @@ export function formatReservationTimeKorean(r: Reservation): string {
 
 /**
  * 장소 표기. 룰셋에서 읽는다 — 건물 이름을 화면에 하드코딩하지 않는다.
- * 고르지 않았거나 모르는 id 면 룰셋의 fallback_text 를 쓴다.
+ *
+ * 건물은 주소를 읽는 문(lib/searchParam.ts)에서 이미 해석되어 들어온다.
+ * 여기서 다시 찾지 않으므로 "모르는 건물" 이라는 경우가 없다.
  */
-export function formatLocation(
-  ruleset: ExamRuleset,
-  locationId?: string | null,
-): string {
-  const found = ruleset.locations.options.find((o) => o.id === locationId);
-  return found ? found.text : ruleset.locations.fallback_text;
+export function formatLocation(location: LocationOption): string {
+  return location.text;
 }
 
 /** 읽으면 받침으로 끝나는 숫자 — 공 · 일 · 삼 · 육 · 칠 · 팔 */
@@ -70,22 +68,22 @@ const CODA_DIGITS = new Set(["0", "1", "3", "6", "7", "8"]);
 const NB_HYPHEN = "‑";
 
 /**
- * 룰셋 문구의 `{phone}` 자리에 그 건물의 접수처 연락처를 넣는다.
+ * 룰셋 문구의 `{phone}` 자리에 **그 건물의** 접수처 연락처를 넣는다.
+ *
+ * 번호는 건물이 정한다. 대표번호로 안내하면 환자가 교환을 거쳐 다시
+ * 연결되고, 그 사이에 줄이려던 전화 응대가 오히려 두 번 일어난다.
+ * 그래서 건물을 모르는 채로 이 함수를 부를 방법을 남기지 않았다 —
+ * 건물은 인자로 받고, 없으면 애초에 화면이 그려지지 않는다.
  *
  * 조사는 룰셋에 `(으)로` 로 적어 두고 여기서 푼다. 앞 숫자를 읽은 소리에
  * 따라 갈리기 때문이다 — 2620 은 "공" 으로 끝나 받침이 있고(으로),
- * 3114 는 "사" 로 끝나 받침이 없다(로). 번호가 바뀔 때마다 문구를 고쳐
+ * 2622 는 "이" 로 끝나 받침이 없다(로). 번호가 바뀔 때마다 문구를 고쳐
  * 쓰지 않도록 규칙으로 둔다.
  *
  * 문장을 새로 만들지 않는다. 룰셋이 준 문구의 빈자리만 채운다.
  */
-export function fillPhone(
-  ruleset: ExamRuleset,
-  text: string,
-  locationId?: string | null,
-): string {
-  const found = ruleset.locations.options.find((o) => o.id === locationId);
-  const phone = found ? found.phone : ruleset.locations.fallback_phone;
+export function fillPhone(text: string, location: LocationOption): string {
+  const phone = location.phone;
   const lastDigit = phone.replace(/[^0-9]/g, "").slice(-1);
 
   return text

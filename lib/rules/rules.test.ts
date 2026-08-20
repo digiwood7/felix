@@ -85,8 +85,9 @@ describe("룰셋 — 현행 실무 기준값", () => {
    * 연락처는 건물마다 다르다 (2026-08-19 확인).
    *   본관 02)3410-2620 · 암병원 02)3410-2622
    *
-   * 대표번호 1599-3114 는 건물을 모를 때만 쓴다. 대표번호로 안내하면
-   * 환자가 교환을 거쳐 다시 연결되고, 줄이려던 전화 응대가 두 번 일어난다.
+   * 대체 번호를 두지 않는다. 대표번호로 안내하면 환자가 교환을 거쳐 다시
+   * 연결되고, 줄이려던 전화 응대가 두 번 일어난다. 건물을 모르는 상태는
+   * 아예 만들지 않는다 — 주소에 건물이 없으면 S1 으로 되돌린다.
    */
   it("접수처 연락처는 건물마다 다르다", () => {
     const phones = Object.fromEntries(
@@ -96,8 +97,17 @@ describe("룰셋 — 현행 실무 기준값", () => {
     expect(phones.cancer).toBe("02)3410-2622");
   });
 
-  it("건물을 모를 때는 대표번호를 쓴다", () => {
-    expect(f18FdgPet.locations.fallback_phone).toBe("1599-3114");
+  // 대표번호로 안내하면 교환을 거쳐 다시 연결되고, 그 사이에 줄이려던
+  // 전화 응대가 오히려 두 번 일어난다. 그래서 건물마다 번호를 둔다
+  it("건물을 모를 때 쓰는 대체 번호를 두지 않는다", () => {
+    expect(f18FdgPet.locations).not.toHaveProperty("fallback_phone");
+    expect(f18FdgPet.locations).not.toHaveProperty("fallback_text");
+  });
+
+  it("모든 건물에 번호가 있다", () => {
+    for (const o of f18FdgPet.locations.options) {
+      expect(o.phone).toMatch(/[0-9]/);
+    }
   });
 
   // 번호를 문구에 박아 두면 건물별로 갈 수 없다

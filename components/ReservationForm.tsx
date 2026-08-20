@@ -76,7 +76,18 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
     setRestored(false);
   }
 
-  const ready = date !== "" && hour !== null && minute !== null && locationId;
+  const selectedLocation = ruleset.locations.options.find(
+    (o) => o.id === locationId,
+  );
+
+  /**
+   * 건물까지 골라야 넘어간다.
+   *
+   * 접수처 연락처가 건물마다 다르므로(본관 · 암병원) 건물은 선택 사항이
+   * 아니다. 뒤 화면들도 주소에 건물이 없으면 이리로 되돌린다.
+   */
+  const ready =
+    date !== "" && hour !== null && minute !== null && selectedLocation;
 
   /**
    * 바로 넘어가지 않고 확인 창을 먼저 띄운다.
@@ -209,11 +220,11 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
         </p>
       )}
 
-      {pending && (
+      {/* 건물은 확인 창이 뜰 때 이미 골라져 있다 (ready 조건) */}
+      {pending && selectedLocation && (
         <ReservationConfirm
           reservation={pending}
-          ruleset={ruleset}
-          locationId={locationId}
+          location={selectedLocation}
           onConfirm={go}
           onCancel={cancelConfirm}
         />

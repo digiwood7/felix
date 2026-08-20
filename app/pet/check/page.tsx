@@ -31,9 +31,11 @@ export default async function CheckScreen({
 
   const reservation = parseReservationParam(t);
   if (!reservation) redirect("/");
+  // 건물이 없으면 배지의 연락처를 정할 수 없다 (app/pet/page.tsx 주석 참고)
+  if (!b) redirect("/");
 
-  const timeline = buildTimeline(f18FdgPet, { reservation, locationId: b });
-  const backHref = `/pet?t=${t}${b ? `&b=${b}` : ""}`;
+  const timeline = buildTimeline(f18FdgPet, { reservation, location: b });
+  const backHref = `/pet?t=${t}&b=${b.id}`;
 
   return (
     <main className="flex flex-1 flex-col px-4 pt-5 pb-8">

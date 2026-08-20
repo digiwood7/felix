@@ -9,7 +9,7 @@ import {
   formatReservationTime,
   formatReservationTimeKorean,
 } from "@/lib/reservationLabel";
-import type { ExamRuleset } from "@/lib/rules/types";
+import type { LocationOption } from "@/lib/rules/types";
 import type { Reservation } from "@/lib/schedule";
 
 /**
@@ -32,14 +32,13 @@ import type { Reservation } from "@/lib/schedule";
  */
 export default function ReservationConfirm({
   reservation,
-  ruleset,
-  locationId,
+  location,
   onConfirm,
   onCancel,
 }: {
   reservation: Reservation;
-  ruleset: ExamRuleset;
-  locationId: string | null;
+  /** 고른 건물. ready 일 때만 이 화면이 뜨므로 항상 있다 */
+  location: LocationOption;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -131,7 +130,7 @@ export default function ReservationConfirm({
             value={formatReservationTime(reservation)}
             sub={formatReservationTimeKorean(reservation)}
           />
-          <Row label="검사 장소" value={formatLocation(ruleset, locationId)} />
+          <Row label="검사 장소" value={formatLocation(location)} />
         </dl>
 
         {/* 맞다는 쪽이 크고 아래에 있다. 엄지가 닿는 자리다 */}
