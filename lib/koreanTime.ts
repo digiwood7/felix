@@ -52,6 +52,17 @@ export function todayInKST(now: number = Date.now()): string {
 }
 
 /**
+ * 지금이 KST 로 몇 시인지 — 0~23
+ *
+ * 익명 로그의 진입 시간대에만 쓴다 (PRD §8 F4). 분 이하는 버린다.
+ * todayInKST 와 같은 방식으로 UTC 문자열에서 잘라내므로 기기 타임존이
+ * 무엇이든 같은 값이 나온다.
+ */
+export function hourInKST(now: number = Date.now()): number {
+  return Number(new Date(now + KST_OFFSET_MS).toISOString().slice(11, 13));
+}
+
+/**
  * KST 기준으로 오늘부터 그 날짜까지 며칠 남았는지.
  * 오늘이면 0, 내일이면 1, 어제면 -1.
  */

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import CalendarButton from "@/components/CalendarButton";
 import CheckCta from "@/components/CheckCta";
+import LogView from "@/components/LogView";
 import ShareButton from "@/components/ShareButton";
 import SpeakButton from "@/components/SpeakButton";
 import Timeline from "@/components/Timeline";
@@ -46,6 +47,8 @@ export default async function TimelineScreen({
 
   return (
     <main className="flex-1 px-4 pt-5 pb-8">
+      <LogView screen="s2" examDate={examDay.date} />
+
       {/* 잘못 입력했으면 여기서 알아차려야 한다. 전부가 틀어지기 때문이다 */}
       <header className="mb-4 rounded-2xl bg-slate-900 px-4 py-4 text-white">
         <p className="text-[1rem] font-medium text-slate-300">내 검사 예약</p>

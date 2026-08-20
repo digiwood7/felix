@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import LogView from "@/components/LogView";
 import QuestionFlow from "@/components/QuestionFlow";
 import { parseReservationParam } from "@/lib/reservationParam";
 import { buildQuestions, type ScheduleHints } from "@/lib/questions";
@@ -36,6 +37,8 @@ export default async function CheckScreen({
 
   return (
     <main className="flex flex-1 flex-col px-4 pt-5 pb-8">
+      <LogView screen="s3" examDate={timeline[timeline.length - 1].date} />
+
       <QuestionFlow
         ruleset={f18FdgPet}
         questions={buildQuestions(f18FdgPet, hintsOf(timeline))}

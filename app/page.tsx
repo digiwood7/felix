@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import LogView from "@/components/LogView";
 import ReservationForm from "@/components/ReservationForm";
 import { parseReservationParam } from "@/lib/reservationParam";
 import { f18FdgPet } from "@/lib/rules";
@@ -32,6 +33,9 @@ export default async function InputScreen({
 
   return (
     <main className="flex-1 px-4 pt-6 pb-8">
+      {/* 예약을 아직 모르므로 상대 거리는 남지 않는다 */}
+      <LogView screen="s1" />
+
       <header className="mb-6">
         {/* 명사가 이어지면 띄어 쓴다 — "검사준비안내" (X) / "검사 준비 안내" (O) */}
         <h1 className="text-[1.65rem] leading-tight font-extrabold text-slate-900">

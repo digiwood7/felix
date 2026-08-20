@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import ShareButton from "@/components/ShareButton";
 import { loadAnswers } from "@/lib/answers";
 import type { StoredAnswers } from "@/lib/answers";
 import { decodeAnswersFromHash } from "@/lib/encode";
 import { toKoreanDateLabel } from "@/lib/koreanTime";
+import { answerCodes, distanceOf } from "@/lib/logEvent";
+import { sendEvent } from "@/lib/logSend";
 import type { Answers, TimeAnswer } from "@/lib/questions";
 import {
   formatLocation,
@@ -51,6 +53,7 @@ export default function SummaryCard({
 }) {
   const [stored, setStored] = useState<StoredAnswers | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const logged = useRef(false);
 
   useEffect(() => {
     // 주소 조각이 먼저다. 없거나 형식이 어긋날 때만 기기에 남은 답을 본다
@@ -59,6 +62,41 @@ export default function SummaryCard({
     );
     setLoaded(true);
   }, [ruleset]);
+
+  /**
+   * S4 도달 기록 — PRD §8 F4
+   *
+   * 답을 읽은 뒤라야 배지와 응답 코드가 정해지므로 LogView 를 쓰지 않고
+   * 여기서 보낸다. 카드가 그려지지 않은 경우(답이 없거나 지난 날 답)도
+   * 도달은 도달이다 — 그때는 배지 없이 화면만 남긴다. 여기서 빼 버리면
+   * "카드까지 왔는데 빈 카드를 봤다" 가 깔때기에서 사라진다.
+   *
+   * **주소 조각(#a=)은 서버로 가지 않고, 여기서 보내는 것도 원문이 아니라
+   * 룰셋이 아는 카테고리 코드뿐이다.**
+   */
+  useEffect(() => {
+    if (!loaded || logged.current) return;
+    logged.current = true;
+
+    const examDate = `${reservation.year}-${pad(reservation.month)}-${pad(reservation.day)}`;
+    // 검사일이 아닌 날에 답한 카드는 배지를 띄우지 않는다. 로그도 같다
+    const fresh = stored?.savedOn === examDate ? stored : null;
+
+    sendEvent({
+      screen: "s4",
+      rel: distanceOf(examDate),
+      badge: fresh
+        ? triage({
+            ruleset,
+            answers: fresh.answers,
+            reservation,
+            timeline,
+            locationId,
+          }).level
+        : null,
+      answers: fresh ? answerCodes(ruleset, fresh.answers) : null,
+    });
+  }, [loaded, stored, ruleset, reservation, timeline, locationId]);
 
   const card = ruleset.card;
 
