@@ -10,6 +10,17 @@ export const metadata: Metadata = {
   title: "핵의학과 PET 검사 준비 안내",
   description: "예약 시간에 맞춘 검사 준비 일정을 확인합니다.",
   // 병원 브랜드를 서비스 아이덴티티로 쓰지 않는다 (PRD §6.5)
+
+  /**
+   * 검색에 걸리지 않는다 — PRD §18 R5
+   *
+   * 이 서비스로 오는 길은 안내지와 대기실의 QR 하나뿐이다(§15).
+   * 검색으로 들어오는 사람은 자기 예약 시각을 모르는 채 도착하고,
+   * 병원 공식 안내가 아닌 화면을 공식 안내로 읽을 위험만 남는다.
+   *
+   * 도달 경로를 좁히는 것이 이 서비스의 안전장치다. 넓히면 R5 가 커진다.
+   */
+  robots: { index: false, follow: false },
 };
 
 export const viewport: Viewport = {
