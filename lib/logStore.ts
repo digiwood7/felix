@@ -28,6 +28,30 @@ export const LOG_KEY = "petlog:events";
 const MAX_RECORDS = 50_000;
 
 /**
+ * 앞에서부터 처음으로 **실제 값이 있는** 것 하나. 없으면 undefined.
+ *
+ * `??` 로는 안 된다. 빈 문자열은 undefined 가 아니므로 그대로 통과하고,
+ * 뒤에 있는 진짜 값은 영영 읽히지 않는다.
+ *
+ * 2026-08-21 에 실제로 그렇게 멈췄다 — 대시보드에 `UPSTASH_REDIS_REST_URL`
+ * 이름만 만들어 두고 값을 비워 둔 변수가, 뒤에 멀쩡히 들어와 있던
+ * `KV_REST_API_URL` 을 가렸다. 로그는 조용히 버려지고 화면은 정상이라
+ * 밖에서는 아무 증상이 없다. 4주 실증이 끝난 뒤에야 알게 될 종류의 실패다.
+ *
+ * 앞뒤 공백도 잘라낸다. 대시보드에 값을 붙여 넣을 때 줄바꿈이 딸려 오면
+ * 주소가 조용히 깨진다.
+ */
+export function firstFilled(
+  ...values: (string | undefined)[]
+): string | undefined {
+  for (const value of values) {
+    const trimmed = value?.trim();
+    if (trimmed) return trimmed;
+  }
+  return undefined;
+}
+
+/**
  * 접속 정보.
  *
  * 이름을 둘 다 본다 — Vercel Marketplace 로 붙이면 `KV_REST_API_*` 가,
@@ -39,9 +63,14 @@ const MAX_RECORDS = 50_000;
  */
 function credentials(): { url?: string; token?: string } {
   return {
-    url: process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL,
-    token:
-      process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN,
+    url: firstFilled(
+      process.env.UPSTASH_REDIS_REST_URL,
+      process.env.KV_REST_API_URL,
+    ),
+    token: firstFilled(
+      process.env.UPSTASH_REDIS_REST_TOKEN,
+      process.env.KV_REST_API_TOKEN,
+    ),
   };
 }
 
