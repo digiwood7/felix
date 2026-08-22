@@ -1,0 +1,564 @@
+<!doctype html>
+<!--
+  W0~W1 집계 시트 — PRD §16 · WORKFLOW 트랙A
+
+  용도
+    개입 전(before) 데이터를 손으로 모으는 종이. 이 데이터가 없으면
+    W8 에 어떤 결과가 나와도 증명할 수 없다 (PRD §4.1 Primary KPI).
+
+  인쇄
+    이 파일을 브라우저로 열고 Cmd+P.
+    A4 · 양면 · 배율 100% · "배경 그래픽" 켜기.
+    2쪽짜리다 — 1쪽 앞면, 2쪽 뒷면. 30부 (관찰자 3명 × 10영업일).
+
+  왜 규칙을 종이에 박아 두었나
+    관찰자가 3명이라 "반복질문" 의 판단 기준이 사람마다 갈리는 것이
+    이 측정의 최대 리스크다 (PRD §16). 시작 전 5분 정렬 미팅을 해도
+    사흘이면 흐려진다. 종이에 있으면 매일 다시 읽게 된다.
+
+  고칠 때
+    항목을 바꾸면 before 와 after 시트가 어긋나 비교가 불가능해진다.
+    수집이 시작된 뒤에는 건드리지 않는다.
+-->
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PET 검사 준비 문의 집계 — 인쇄용</title>
+
+    <style>
+      :root {
+        --ink: #000;
+        --soft: #444;
+        --line: #000;
+        --hair: #b8b8b8;
+        --sans:
+          -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI",
+          "Malgun Gothic", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: var(--sans);
+        color: var(--ink);
+        background: #e9ecef;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      /* ── 화면에서만 보이는 인쇄 안내 ───────────────────────── */
+
+      .howto {
+        max-width: 190mm;
+        margin: 24px auto 8px;
+        padding: 16px 20px;
+        background: #fff;
+        border: 2px solid #000;
+        font-size: 14px;
+        line-height: 1.7;
+      }
+
+      .howto h1 {
+        margin: 0 0 8px;
+        font-size: 16px;
+      }
+
+      .howto ul {
+        margin: 0;
+        padding-left: 20px;
+      }
+
+      .howto b {
+        background: #ffe9a8;
+        padding: 0 2px;
+      }
+
+      /* ── 용지 ──────────────────────────────────────────── */
+
+      .sheet {
+        width: 210mm;
+        min-height: 297mm;
+        margin: 16px auto;
+        padding: 12mm 13mm;
+        background: #fff;
+        border: 1px solid #ccc;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* ── 머리글 ────────────────────────────────────────── */
+
+      .head {
+        border-bottom: 3px solid var(--line);
+        padding-bottom: 3mm;
+        margin-bottom: 4mm;
+      }
+
+      .head h2 {
+        margin: 0 0 2mm;
+        font-size: 15pt;
+        letter-spacing: -0.02em;
+      }
+
+      .head .meta {
+        display: flex;
+        gap: 8mm;
+        font-size: 10.5pt;
+        color: var(--soft);
+      }
+
+      .fill {
+        display: inline-block;
+        border-bottom: 1px solid var(--line);
+        min-width: 22mm;
+        height: 1.4em;
+        vertical-align: bottom;
+      }
+
+      .fill.wide {
+        min-width: 34mm;
+      }
+
+      .fill.narrow {
+        min-width: 10mm;
+      }
+
+      /* ── 규칙 상자 ─────────────────────────────────────── */
+
+      .rules {
+        border: 2px solid var(--line);
+        padding: 2.5mm 4mm;
+        margin-bottom: 4mm;
+        font-size: 9.5pt;
+        line-height: 1.6;
+      }
+
+      .rules li {
+        margin: 0;
+      }
+
+      .rules ol {
+        margin: 0;
+        padding-left: 4.5mm;
+      }
+
+      .rules b {
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
+
+      /* ── 구역 ──────────────────────────────────────────── */
+
+      .block {
+        margin-bottom: 4.5mm;
+      }
+
+      .block > h3 {
+        margin: 0 0 1.5mm;
+        font-size: 11.5pt;
+        display: flex;
+        align-items: baseline;
+        gap: 3mm;
+      }
+
+      .block > h3 .note {
+        font-size: 9pt;
+        font-weight: 400;
+        color: var(--soft);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 10.5pt;
+      }
+
+      /* ── [A] 문의 유형 ─────────────────────────────────── */
+
+      .ask td {
+        border: 1px solid var(--line);
+        height: 13.5mm;
+        padding: 0 2mm;
+      }
+
+      .ask .no {
+        width: 8mm;
+        text-align: center;
+        font-weight: 700;
+      }
+
+      .ask .label {
+        width: 66mm;
+        line-height: 1.35;
+      }
+
+      .ask .label small {
+        display: block;
+        font-size: 8.5pt;
+        color: var(--soft);
+      }
+
+      /*
+        正 자를 쓰는 칸이므로 안내선을 넣지 않는다. 칸을 나눠 두면
+        한 칸에 한 획씩 넣어야 하는지 헷갈리고, 하루에 열 번 넘게
+        물어보는 항목에서 칸이 모자란다.
+      */
+      .ask .marks {
+        background: #fff;
+      }
+
+      .ask tr.etc td {
+        height: 9mm;
+        background: #f0f0f0;
+      }
+
+      .ask tr.etc .marks {
+        background: #f0f0f0;
+        font-size: 9pt;
+        color: var(--soft);
+      }
+
+      /* ── [B] 문답 시간 ─────────────────────────────────── */
+
+      .time {
+        border: 2px solid var(--line);
+        padding: 2.5mm 3mm 3mm;
+      }
+
+      .time .cap {
+        font-size: 9pt;
+        color: var(--soft);
+        line-height: 1.6;
+        margin-bottom: 2mm;
+      }
+
+      .time table {
+        font-size: 11pt;
+      }
+
+      .time th {
+        font-size: 9.5pt;
+        font-weight: 700;
+        border-bottom: 1px solid var(--line);
+        padding-bottom: 1mm;
+      }
+
+      .time td {
+        border-bottom: 1px solid var(--hair);
+        height: 10mm;
+        text-align: center;
+      }
+
+      .time .idx {
+        width: 12mm;
+        font-weight: 700;
+      }
+
+      .time .sec {
+        width: 46mm;
+      }
+
+      .time .card {
+        letter-spacing: 0.4em;
+        font-size: 12pt;
+      }
+
+      /* ── [C] 지연 · 취소 ───────────────────────────────── */
+
+      .delay {
+        border: 1px solid var(--line);
+        padding: 5mm 3mm;
+        font-size: 10.5pt;
+        line-height: 1.4;
+        white-space: nowrap;
+      }
+
+      /* ── 뒷면 ──────────────────────────────────────────── */
+
+      .verbatim {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .verbatim .why {
+        border: 2px solid var(--line);
+        padding: 3mm 4mm;
+        margin-bottom: 4mm;
+        font-size: 10pt;
+        line-height: 1.65;
+      }
+
+      /*
+        반복 그라디언트로 그리면 줄 간격이 들쭉날쭉해진다 — 브라우저가
+        mm 를 픽셀로 반올림하는 자리가 줄마다 다르기 때문이다.
+        인쇄물에서 그건 성의 없어 보이고, 성의 없어 보이는 종이는
+        사흘 뒤에 안 채워진다. 실제 행으로 그린다.
+      */
+      .lines {
+        flex: 1;
+        border-top: 1px solid var(--hair);
+      }
+
+      .lines .rule {
+        height: 10.5mm;
+        border-bottom: 1px solid var(--hair);
+      }
+
+      .foot {
+        margin-top: 3mm;
+        font-size: 8.5pt;
+        color: var(--soft);
+        text-align: right;
+      }
+
+      /* ── 인쇄 ──────────────────────────────────────────── */
+
+      @page {
+        size: A4;
+        margin: 0;
+      }
+
+      @media print {
+        body {
+          background: #fff;
+        }
+
+        .howto {
+          display: none;
+        }
+
+        .sheet {
+          margin: 0;
+          border: 0;
+          width: 210mm;
+          height: 297mm;
+          page-break-after: always;
+        }
+
+        .sheet:last-child {
+          page-break-after: auto;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="howto">
+      <h1>인쇄 방법</h1>
+      <ul>
+        <li><b>Cmd + P</b> → 용지 <b>A4</b> · 배율 <b>100%</b></li>
+        <li>
+          <b>양면 인쇄</b>로 설정 — 1쪽이 앞면, 2쪽이 뒷면(환자 말 그대로 받아적는
+          칸)입니다
+        </li>
+        <li>
+          <b>"배경 그래픽"을 켜야</b> 표 안의 안내선이 나옵니다 (Chrome: 옵션
+          더보기 → 배경 그래픽)
+        </li>
+        <li>
+          <b>30부</b> — 관찰자 3명 × 10영업일. 여유 있게 뽑아 창구에 둡니다
+        </li>
+      </ul>
+    </div>
+
+    <!-- ═══════════════════ 앞면 ═══════════════════ -->
+    <section class="sheet">
+      <div class="head">
+        <h2>PET 검사 준비 문의 집계</h2>
+        <div class="meta">
+          <span>날짜 <span class="fill"></span></span>
+          <span>요일 <span class="fill narrow"></span></span>
+          <span>관찰자 <span class="fill wide"></span></span>
+        </div>
+      </div>
+
+      <div class="rules">
+        <ol>
+          <li>
+            <b>물어본 것만</b> 표시한다. 내가 먼저 설명한 것은 세지 않는다.
+          </li>
+          <li>
+            <b>[B]는 그날 창구 담당자 1명만</b> 기록한다. 첫 환자부터 순서대로
+            5명 — 환자를 고르지 않는다.
+          </li>
+          <li><b>9번은 환자 말 그대로</b> 뒷면에 적는다. 요약하지 않는다.</li>
+        </ol>
+      </div>
+
+      <div class="block">
+        <h3>
+          [A] 환자가 물어본 것
+          <span class="note">한 번 물을 때마다 한 획 — 正</span>
+        </h3>
+        <table class="ask">
+          <tr>
+            <td class="no">1</td>
+            <td class="label">
+              금식
+              <small>언제부터 / 뭘 먹었는데 되나</small>
+            </td>
+            <td class="marks"></td>
+          </tr>
+          <tr>
+            <td class="no">2</td>
+            <td class="label">
+              물 · 음료
+              <small>물, 커피, 보리차, 껌, 사탕</small>
+            </td>
+            <td class="marks"></td>
+          </tr>
+          <tr>
+            <td class="no">3</td>
+            <td class="label">당뇨약 · 인슐린</td>
+            <td class="marks"></td>
+          </tr>
+          <tr>
+            <td class="no">4</td>
+            <td class="label">
+              그 외 복약
+              <small>혈압약 등</small>
+            </td>
+            <td class="marks"></td>
+          </tr>
+          <tr>
+            <td class="no">5</td>
+            <td class="label">운동</td>
+            <td class="marks"></td>
+          </tr>
+          <tr>
+            <td class="no">6</td>
+            <td class="label">
+              검사 소요시간
+              <small>언제 끝나나</small>
+            </td>
+            <td class="marks"></td>
+          </tr>
+          <tr>
+            <td class="no">7</td>
+            <td class="label">
+              결과
+              <small>언제 나오나 / 어디서 듣나</small>
+            </td>
+            <td class="marks"></td>
+          </tr>
+          <tr>
+            <td class="no">8</td>
+            <td class="label">도착시간 · 장소</td>
+            <td class="marks"></td>
+          </tr>
+          <tr class="etc">
+            <td class="no">9</td>
+            <td class="label"><b>그 외</b></td>
+            <td class="marks">→ 뒷면에 환자 말 그대로 받아적는다</td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="block">
+        <h3>[B] 접수 문답 시간 <span class="note">하루 5명</span></h3>
+        <div class="time">
+          <div class="cap">
+            창구에 선 순간 <b>→</b> 준비사항 확인이 끝난 순간까지. 그날 창구
+            담당자 <b>1명이</b> 첫 환자부터 순서대로 5명.<br />
+            <b>카드</b> = 환자가 요약카드 화면을 보여줬으면 O
+            <span style="color: #666"
+              >— 서비스 시작 전에는 전부 X 이지만, 시트를 같게 유지하려고
+              둔다</span
+            >
+          </div>
+          <table>
+            <tr>
+              <th></th>
+              <th>시간</th>
+              <th>카드</th>
+            </tr>
+            <tr>
+              <td class="idx">①</td>
+              <td class="sec"><span class="fill"></span> 초</td>
+              <td class="card">O&nbsp;&nbsp;/&nbsp;&nbsp;X</td>
+            </tr>
+            <tr>
+              <td class="idx">②</td>
+              <td class="sec"><span class="fill"></span> 초</td>
+              <td class="card">O&nbsp;&nbsp;/&nbsp;&nbsp;X</td>
+            </tr>
+            <tr>
+              <td class="idx">③</td>
+              <td class="sec"><span class="fill"></span> 초</td>
+              <td class="card">O&nbsp;&nbsp;/&nbsp;&nbsp;X</td>
+            </tr>
+            <tr>
+              <td class="idx">④</td>
+              <td class="sec"><span class="fill"></span> 초</td>
+              <td class="card">O&nbsp;&nbsp;/&nbsp;&nbsp;X</td>
+            </tr>
+            <tr>
+              <td class="idx">⑤</td>
+              <td class="sec"><span class="fill"></span> 초</td>
+              <td class="card">O&nbsp;&nbsp;/&nbsp;&nbsp;X</td>
+            </tr>
+          </table>
+        </div>
+      </div>
+
+      <div class="block">
+        <h3>[C] 오늘 준비 미흡으로 지연 · 취소된 건</h3>
+        <div class="delay">
+          <span class="fill narrow"></span> 건 &nbsp;&nbsp; 사유
+          <span class="fill" style="min-width: 110mm"></span>
+        </div>
+      </div>
+
+      <div class="foot">앞면 · 뒷면도 채워 주세요</div>
+    </section>
+
+    <!-- ═══════════════════ 뒷면 ═══════════════════ -->
+    <section class="sheet">
+      <div class="head">
+        <h2>9번 &ldquo;그 외&rdquo; — 환자 말 그대로</h2>
+        <div class="meta">
+          <span>날짜 <span class="fill"></span></span>
+          <span>관찰자 <span class="fill wide"></span></span>
+        </div>
+      </div>
+
+      <div class="verbatim">
+        <div class="why">
+          <b>요약하지 마세요.</b> &ldquo;금식 관련 질문&rdquo; 이라고 적으면
+          정보가 사라집니다. &ldquo;어제 저녁에 소주 한 잔 했는데 괜찮냐&rdquo;
+          처럼 <b>들은 그대로</b> 적어 주세요.<br />
+          이 칸이 앞면 1~8번에 없는 질문을 찾아내는 유일한 방법입니다. 환자가
+          실제로 무엇을 궁금해하는지가 여기에만 남습니다.
+        </div>
+        <div class="lines">
+          <div class="rule"></div>
+          <div class="rule"></div>
+          <div class="rule"></div>
+          <div class="rule"></div>
+          <div class="rule"></div>
+          <div class="rule"></div>
+          <div class="rule"></div>
+          <div class="rule"></div>
+          <div class="rule"></div>
+          <div class="rule"></div>
+          <div class="rule"></div>
+          <div class="rule"></div>
+          <div class="rule"></div>
+          <div class="rule"></div>
+          <div class="rule"></div>
+          <div class="rule"></div>
+          <div class="rule"></div>
+          <div class="rule"></div>
+          <div class="rule"></div>
+        </div>
+      </div>
+
+      <div class="foot">PRD §16 · 항목을 바꾸면 before/after 비교가 깨집니다</div>
+    </section>
+  </body>
+</html>
