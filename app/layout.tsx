@@ -34,9 +34,9 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   // kill switch 2차 방어선.
-  // 실제 차단은 middleware.ts 에서 한다 — 미들웨어가 라우팅보다 먼저 실행되어야
+  // 실제 차단은 proxy.ts 에서 한다 — 그쪽이 라우팅보다 먼저 실행되어야
   // 페이지 코드가 아예 실행되지 않기 때문이다.
-  // 여기서는 미들웨어가 우회되는 경우에도 화면에 아무것도 새지 않도록 한 번 더 막는다.
+  // 여기서는 그쪽이 우회되는 경우에도 화면에 아무것도 새지 않도록 한 번 더 막는다.
   if (isMaintenance()) {
     return (
       <html lang="ko">

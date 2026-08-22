@@ -34,8 +34,8 @@ const TUNNEL_HOSTS = ["*.trycloudflare.com"];
  * 요청과 무관하게 언제나 같은 보안 헤더.
  *
  * 요청마다 값이 달라지는 CSP 는 여기에 둘 수 없다 — nonce 가 매번 새로
- * 만들어져야 하므로 middleware.ts 가 붙인다. 나머지는 정적이고,
- * 여기 두면 미들웨어를 타지 않는 정적 자산에도 함께 붙는다.
+ * 만들어져야 하므로 proxy.ts 가 붙인다. 나머지는 정적이고,
+ * 여기 두면 proxy 를 타지 않는 정적 자산에도 함께 붙는다.
  */
 const isDev = process.env.NODE_ENV === "development";
 

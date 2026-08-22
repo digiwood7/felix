@@ -13,7 +13,7 @@ import { isCrossSiteRequest } from "@/lib/sameSite";
  * 여는 헤더는 두 개뿐이고 둘 다 사람을 가리키지 않는다 —
  * `content-length`(본문 상한)와 `sec-fetch-site`(lib/sameSite.ts).
  *
- * kill switch 는 이 파일보다 먼저다 — middleware.ts 의 matcher 가
+ * kill switch 는 이 파일보다 먼저다 — proxy.ts 의 matcher 가
  * /api/log 도 포함하므로, maintenance 상태에서는 이 핸들러가 아예
  * 실행되지 않는다 (CLAUDE.md 아키텍처 규칙).
  *

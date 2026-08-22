@@ -13,8 +13,14 @@ import { isMaintenance } from "@/lib/serviceStatus";
  * 실행해 RSC 페이로드에 담아 보낸다. 즉 계산 로직이 그대로 돌고
  * 계산 결과가 HTML에 실려 나간다.
  *
- * 미들웨어는 라우팅·렌더링보다 먼저 실행되므로,
+ * proxy 는 라우팅·렌더링보다 먼저 실행되므로,
  * 여기서 막아야 페이지 코드가 아예 실행되지 않는다.
+ *
+ * **이 파일의 이름이 proxy.ts 인 이유.** Next 16 에서 `middleware` 파일
+ * 규약이 deprecated 되고 `proxy` 로 이름이 바뀌었다. 하는 일은 같다.
+ * 옛 이름으로 두면 언젠가 지원이 끊기면서 **kill switch 와 CSP 가 동시에
+ * 사라지는데**, 둘 다 없어져도 화면은 멀쩡히 뜬다. 즉 밖에서는 아무 증상이
+ * 없다. 그런 종류의 실패는 이름을 미리 옮겨 두는 것으로만 막을 수 있다.
  *
  * ─────────────────────────────────────────────────────────────
  *
@@ -74,7 +80,7 @@ function buildCsp(nonce: string): string {
   ].join("; ");
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const nonce = makeNonce();
   const csp = buildCsp(nonce);
 
