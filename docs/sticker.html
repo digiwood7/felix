@@ -1,0 +1,332 @@
+<!doctype html>
+<!--
+  대기실 · 접수처 스티커 시안 — WORKFLOW T13
+
+  인쇄
+    브라우저로 열고 Cmd+P. A4 · 배율 100% · 배경 그래픽 켜기.
+    1쪽 = 중형 4장 (95 × 130mm), 2쪽 = 대형 1장 (A5).
+    라벨 용지가 없으면 일반 A4 에 뽑아 잘라서 붙여도 된다.
+
+  QR
+    public/qr/pet.svg 를 그대로 옮겨 넣었다. 주소가 바뀌면
+    node scripts/make-qr.mjs 로 다시 만들고 아래 <symbol> 을 교체한다.
+    담고 있는 주소는 https://petct.kr/pet 이다.
+
+  문구
+    "검사 준비, 미리 확인하세요 — 1분" (2026-08-22 확정)
+
+    "AI" · "앱" · "서비스" 를 쓰지 않는다 — 고령 환자에게 진입 장벽이 된다.
+    병원명 · 로고를 쓰지 않는다 (PRD §6-5).
+
+  왜 도메인을 같이 적는가
+    QR 이 안 찍히는 사람이 반드시 있다. 조명이 어둡거나, 폰이 오래됐거나,
+    QR 스캔 방법을 모른다. 도메인을 8글자로 고른 이유가 이것이다 (PRD §19).
+
+  아직 안 정해진 것
+    부착 위치 3곳. 후보는 접수 창구 정면 / 대기 의자 정면 / 안내지 배부 지점.
+    "환자가 멍하니 앉아 있는 동안 눈이 가는 곳" 이 기준이다.
+-->
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PET 검사 준비 — 스티커 시안</title>
+
+    <style>
+      :root {
+        --ink: #000;
+        --soft: #3f3f3f;
+        --faint: #6b6b6b;
+        --cut: #c9c9c9;
+        --sans:
+          -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI",
+          "Malgun Gothic", sans-serif;
+        --mono:
+          ui-monospace, SFMono-Regular, "SF Mono", Menlo, "Cascadia Mono",
+          monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: var(--sans);
+        color: var(--ink);
+        background: #e9ecef;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .howto {
+        max-width: 190mm;
+        margin: 24px auto 8px;
+        padding: 16px 20px;
+        background: #fff;
+        border: 2px solid #000;
+        font-size: 14px;
+        line-height: 1.7;
+      }
+
+      .howto h1 {
+        margin: 0 0 8px;
+        font-size: 16px;
+      }
+
+      .howto ul {
+        margin: 0;
+        padding-left: 20px;
+      }
+
+      .howto b {
+        background: #ffe9a8;
+        padding: 0 2px;
+      }
+
+      .page {
+        width: 210mm;
+        height: 297mm;
+        margin: 16px auto;
+        padding: 8mm;
+        background: #fff;
+        border: 1px solid #ccc;
+        display: flex;
+        flex-wrap: wrap;
+        align-content: center;
+        justify-content: center;
+        gap: 5mm;
+      }
+
+      /* ── 스티커 ────────────────────────────────────────── */
+
+      .sticker {
+        border: 1px dashed var(--cut);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        background: #fff;
+      }
+
+      .sticker .lead {
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        line-height: 1.32;
+      }
+
+      .sticker .minute {
+        white-space: nowrap;
+      }
+
+      .sticker .qr {
+        display: block;
+      }
+
+      .sticker .use {
+        color: var(--soft);
+        line-height: 1.4;
+      }
+
+      .sticker .addr {
+        font-family: var(--mono);
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        border-top: 1px solid var(--ink);
+        color: var(--ink);
+      }
+
+      .sticker .addr small {
+        display: block;
+        font-family: var(--sans);
+        font-weight: 400;
+        color: var(--faint);
+      }
+
+      /*
+        중형 — 대기 의자 정면 · 안내지 배부 지점
+
+        92mm 인 이유: A4 폭 210 − 좌우 여백 16 = 194mm 에 두 장과 간격
+        5mm 가 들어가야 한다. 95mm 로 잡으면 6mm 가 모자라 두 번째 장이
+        아래로 흘러 한 장씩 인쇄된다.
+      */
+      .m {
+        width: 92mm;
+        height: 128mm;
+        padding: 7mm 5mm;
+      }
+
+      .m .lead {
+        font-size: 17pt;
+        margin-bottom: 6mm;
+      }
+
+      .m .qr {
+        width: 46mm;
+        height: 46mm;
+      }
+
+      .m .use {
+        font-size: 9.5pt;
+        margin-top: 4mm;
+      }
+
+      .m .addr {
+        font-size: 14pt;
+        margin-top: 5mm;
+        padding-top: 2.5mm;
+      }
+
+      .m .addr small {
+        font-size: 8pt;
+        margin-top: 1mm;
+      }
+
+      /* 대형 — 접수 창구 정면 */
+
+      .l {
+        width: 148mm;
+        height: 210mm;
+        padding: 12mm 10mm;
+      }
+
+      .l .lead {
+        font-size: 26pt;
+        margin-bottom: 10mm;
+      }
+
+      .l .qr {
+        width: 72mm;
+        height: 72mm;
+      }
+
+      .l .use {
+        font-size: 13pt;
+        margin-top: 6mm;
+      }
+
+      .l .addr {
+        font-size: 21pt;
+        margin-top: 8mm;
+        padding-top: 4mm;
+      }
+
+      .l .addr small {
+        font-size: 11pt;
+        margin-top: 1.5mm;
+      }
+
+      @page {
+        size: A4;
+        margin: 0;
+      }
+
+      @media print {
+        body {
+          background: #fff;
+        }
+
+        .howto {
+          display: none;
+        }
+
+        .page {
+          margin: 0;
+          border: 0;
+          page-break-after: always;
+        }
+
+        .page:last-of-type {
+          page-break-after: auto;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <!--
+      QR 은 한 번만 정의하고 <use> 로 가져다 쓴다. 다섯 군데에 같은 경로를
+      복사해 두면 주소를 바꿀 때 한 곳을 빠뜨린다.
+    -->
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <symbol id="qr" viewBox="0 0 37 37" shape-rendering="crispEdges">
+        <path fill="#ffffff" d="M0 0h37v37H0z" />
+        <path
+          stroke="#000000"
+          d="M4 4.5h7m2 0h5m4 0h1m1 0h1m1 0h7M4 5.5h1m5 0h1m3 0h1m4 0h1m1 0h4m1 0h1m5 0h1M4 6.5h1m1 0h3m1 0h1m3 0h1m3 0h3m3 0h1m1 0h1m1 0h3m1 0h1M4 7.5h1m1 0h3m1 0h1m2 0h1m1 0h1m2 0h1m1 0h2m1 0h2m1 0h1m1 0h3m1 0h1M4 8.5h1m1 0h3m1 0h1m1 0h1m2 0h5m1 0h1m1 0h1m2 0h1m1 0h3m1 0h1M4 9.5h1m5 0h1m2 0h3m7 0h2m1 0h1m5 0h1M4 10.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M12 11.5h1m1 0h3m3 0h3M6 12.5h2m2 0h3m3 0h1m1 0h3m2 0h4m1 0h1M4 13.5h1m1 0h2m1 0h1m1 0h3m1 0h1m3 0h1m5 0h6m1 0h1M10 14.5h2m3 0h1m3 0h4m3 0h2m3 0h1M4 15.5h6m1 0h1m1 0h2m2 0h4m2 0h1m8 0h1M4 16.5h2m2 0h4m2 0h2m1 0h5m3 0h1m1 0h1m2 0h3M6 17.5h2m4 0h3m5 0h1m2 0h1m2 0h2m1 0h2m1 0h1M5 18.5h1m1 0h1m2 0h1m3 0h2m1 0h1m2 0h2m1 0h1m1 0h5m2 0h1M4 19.5h3m1 0h1m2 0h1m2 0h3m3 0h1m1 0h1m5 0h2m1 0h1M8 20.5h3m8 0h2m1 0h1m1 0h2m2 0h2m1 0h1M8 21.5h2m4 0h4m2 0h6m1 0h1m1 0h2M4 22.5h1m1 0h2m2 0h1m1 0h2m2 0h1m1 0h2m1 0h3m2 0h2m1 0h2M6 23.5h1m1 0h1m3 0h4m1 0h1m1 0h2m2 0h1m1 0h2m1 0h3M5 24.5h1m1 0h1m1 0h3m1 0h1m1 0h7m2 0h5m1 0h3M12 25.5h1m2 0h1m1 0h2m2 0h4m3 0h2m2 0h1M4 26.5h7m1 0h1m1 0h1m1 0h1m6 0h2m1 0h1m1 0h1m1 0h2M4 27.5h1m5 0h1m2 0h1m1 0h3m2 0h3m1 0h1m3 0h1m2 0h1M4 28.5h1m1 0h3m1 0h1m2 0h2m2 0h1m2 0h1m1 0h1m1 0h8M4 29.5h1m1 0h3m1 0h1m1 0h1m3 0h1m3 0h1m1 0h2m4 0h1m1 0h2M4 30.5h1m1 0h3m1 0h1m1 0h3m2 0h2m2 0h1m2 0h1m2 0h1m1 0h2m1 0h1M4 31.5h1m5 0h1m4 0h4m1 0h3m5 0h1m2 0h1M4 32.5h7m2 0h3m1 0h1m1 0h2m3 0h1m2 0h1m3 0h1"
+        />
+      </symbol>
+    </svg>
+
+    <div class="howto">
+      <h1>인쇄 방법</h1>
+      <ul>
+        <li><b>Cmd + P</b> → 용지 <b>A4</b> · 배율 <b>100%</b></li>
+        <li>
+          <b>1쪽</b> 중형 4장 (95 × 130mm) — 대기 의자 정면, 안내지 배부 지점용<br />
+          <b>2쪽</b> 대형 1장 (A5) — 접수 창구 정면용
+        </li>
+        <li>
+          점선은 <b>재단선</b>입니다. 자를 때 QR 둘레의 흰 여백을 잘라내지
+          마세요 — 스캐너가 코드 경계를 못 찾습니다
+        </li>
+        <li>
+          라벨 용지가 없으면 일반 A4에 뽑아 잘라 붙여도 됩니다.
+          <b>코팅하면 반사되어 인식률이 떨어집니다</b>
+        </li>
+      </ul>
+    </div>
+
+    <!-- ═══════════ 1쪽 · 중형 4장 ═══════════ -->
+    <section class="page">
+      <div class="sticker m">
+        <p class="lead">
+          검사 준비,<br />미리 확인하세요 <span class="minute">— 1분</span>
+        </p>
+        <svg class="qr"><use href="#qr" /></svg>
+        <p class="use">휴대폰 카메라를 대면 열립니다</p>
+        <p class="addr">petct.kr<small>직접 입력하셔도 됩니다</small></p>
+      </div>
+
+      <div class="sticker m">
+        <p class="lead">
+          검사 준비,<br />미리 확인하세요 <span class="minute">— 1분</span>
+        </p>
+        <svg class="qr"><use href="#qr" /></svg>
+        <p class="use">휴대폰 카메라를 대면 열립니다</p>
+        <p class="addr">petct.kr<small>직접 입력하셔도 됩니다</small></p>
+      </div>
+
+      <div class="sticker m">
+        <p class="lead">
+          검사 준비,<br />미리 확인하세요 <span class="minute">— 1분</span>
+        </p>
+        <svg class="qr"><use href="#qr" /></svg>
+        <p class="use">휴대폰 카메라를 대면 열립니다</p>
+        <p class="addr">petct.kr<small>직접 입력하셔도 됩니다</small></p>
+      </div>
+
+      <div class="sticker m">
+        <p class="lead">
+          검사 준비,<br />미리 확인하세요 <span class="minute">— 1분</span>
+        </p>
+        <svg class="qr"><use href="#qr" /></svg>
+        <p class="use">휴대폰 카메라를 대면 열립니다</p>
+        <p class="addr">petct.kr<small>직접 입력하셔도 됩니다</small></p>
+      </div>
+    </section>
+
+    <!-- ═══════════ 2쪽 · 대형 1장 ═══════════ -->
+    <section class="page">
+      <div class="sticker l">
+        <p class="lead">
+          검사 준비,<br />미리 확인하세요 <span class="minute">— 1분</span>
+        </p>
+        <svg class="qr"><use href="#qr" /></svg>
+        <p class="use">휴대폰 카메라를 대면 열립니다</p>
+        <p class="addr">petct.kr<small>직접 입력하셔도 됩니다</small></p>
+      </div>
+    </section>
+  </body>
+</html>
