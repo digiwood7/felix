@@ -1,14 +1,17 @@
 import { sanitizePayload, toLoggedEvent } from "@/lib/logEvent";
 import { appendEvent } from "@/lib/logStore";
+import { logRateLimiter } from "@/lib/rateLimit";
 import { f18FdgPet } from "@/lib/rules";
+import { isCrossSiteRequest } from "@/lib/sameSite";
 
 /**
  * 익명 이벤트 수집 — PRD §8 F4
  *
- * **읽지 않는 것으로 저장하지 않음을 보장한다.**
- * request.headers 를 열지 않는다. IP 도 User-Agent 도 여기서는 존재하지
- * 않는 값이다. "저장하지 않는다" 를 저장 직전에 지우는 방식으로 지키면
- * 언젠가 지우는 줄이 빠진다.
+ * **개인을 가리키는 것은 읽지 않는다.**
+ * IP 도 User-Agent 도 여기서는 존재하지 않는 값이다. "저장하지 않는다" 를
+ * 저장 직전에 지우는 방식으로 지키면 언젠가 지우는 줄이 빠진다.
+ * 여는 헤더는 두 개뿐이고 둘 다 사람을 가리키지 않는다 —
+ * `content-length`(본문 상한)와 `sec-fetch-site`(lib/sameSite.ts).
  *
  * kill switch 는 이 파일보다 먼저다 — middleware.ts 의 matcher 가
  * /api/log 도 포함하므로, maintenance 상태에서는 이 핸들러가 아예
@@ -31,6 +34,12 @@ export const dynamic = "force-dynamic";
 const MAX_BODY_BYTES = 2_000;
 
 export async function POST(request: Request) {
+  // 다른 사이트가 방문자 몰래 대신 보낸 것. 형태가 맞아도 받지 않는다
+  if (isCrossSiteRequest(request.headers)) return accepted();
+
+  // 저장소를 태우는 규모를 막는다. 넘긴 것은 조용히 버린다
+  if (!logRateLimiter.take()) return accepted();
+
   const declared = Number(request.headers.get("content-length") ?? 0);
   if (declared > MAX_BODY_BYTES) return accepted();
 
