@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   daysUntilInKST,
   isBeforeInKST,
+  nowTimeInKST,
   toDateTimeAttr,
   toKoreanDateLabel,
   toKoreanTimeLabel,
@@ -97,6 +98,28 @@ describe("daysUntilInKST", () => {
   it("자정 직전에도 오늘은 오늘이다", () => {
     const almostMidnight = Date.parse("2026-08-20T14:59:00Z");
     expect(daysUntilInKST("2026-08-20", almostMidnight)).toBe(0);
+  });
+});
+
+/**
+ * 답한 시각을 카드에 적는 데 쓴다 (S4).
+ *
+ * 날짜만으로는 같은 날 안의 변화를 잡지 못한다 — 아침에 만든 🟢 를
+ * 오후에 내밀어도 날짜가 같아 그대로 통과한다.
+ */
+describe("nowTimeInKST", () => {
+  it("KST 로 잘라 읽는다", () => {
+    // UTC 23:05 → KST 다음 날 08:05
+    expect(nowTimeInKST(Date.parse("2026-08-23T23:05:00Z"))).toBe("08:05");
+  });
+
+  it("자정을 넘겨도 맞다", () => {
+    expect(nowTimeInKST(Date.parse("2026-08-23T15:00:00Z"))).toBe("00:00");
+    expect(nowTimeInKST(Date.parse("2026-08-23T14:59:00Z"))).toBe("23:59");
+  });
+
+  it("분까지 남기고 초는 버린다", () => {
+    expect(nowTimeInKST(Date.parse("2026-08-24T03:07:59Z"))).toBe("12:07");
   });
 });
 

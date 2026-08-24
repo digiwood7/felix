@@ -23,12 +23,13 @@ import type { ExamRuleset } from "./rules/types";
  *
  * 형식 — `-` 로 나눈 여섯 칸. 빈 칸은 "아직 답하지 않음" 이다.
  *
- *   1-20260820-y-n-168x62-y02.4
- *   │ │        │ │ │      └ 여성 문항: 해당됨 · flags[0]·flags[2] · 생리 4일째
- *   │ │        │ │ └ 키 168 · 몸무게 62
- *   │ │        │ └ 당뇨약 · 인슐린: 쓰지 않음
- *   │ │        └ 금식: 지킴
- *   │ └ 답한 날 (KST). 검사 당일 답인지 가리는 데 쓴다
+ *   2-202608200805-y-n-168x62-y02.4
+ *   │ │            │ │ │      └ 여성 문항: 해당됨 · flags[0]·flags[2] · 생리 4일째
+ *   │ │            │ │ └ 키 168 · 몸무게 62
+ *   │ │            │ └ 당뇨약 · 인슐린: 쓰지 않음
+ *   │ │            └ 금식: 지킴
+ *   │ └ 답한 날 · 시각 (KST). 날짜는 검사 당일 답인지 가리고,
+ *   │   시각은 카드에 그대로 적는다 (같은 날 안의 변화를 직원이 본다)
  *   └ 형식 판
  *
  * **암호화하지 않는다.** 담기는 것은 숫자와 룰셋에 정의된 항목의 자리번호
@@ -49,7 +50,7 @@ import type { ExamRuleset } from "./rules/types";
  * 그대로 읽으면 **틀린 카드가 조용히 그려진다.** 버리면 다시 답하게 될
  * 뿐이지만, 잘못 읽으면 직원이 그것을 사실로 받는다.
  */
-export const FORMAT_VERSION = "1";
+export const FORMAT_VERSION = "2";
 
 /** 칸 구분 */
 const FIELD = "-";
@@ -133,7 +134,8 @@ export function encodeAnswers(
 
   return [
     FORMAT_VERSION,
-    stored.savedOn.replaceAll("-", ""),
+    // 답한 날짜와 시각을 한 칸에 붙인다 — "202608200805"
+    `${stored.savedOn.replaceAll("-", "")}${stored.savedAt.replace(":", "")}`,
     encodeFasting(a),
     encodeDiabetes(a),
     encodeBody(a),
@@ -164,18 +166,18 @@ export function decodeAnswers(
   const parts = value.split(FIELD);
   if (parts.length !== 6) return null;
 
-  const [version, savedOnRaw, fastingRaw, diabetesRaw, bodyRaw, femaleRaw] =
+  const [version, savedMomentRaw, fastingRaw, diabetesRaw, bodyRaw, femaleRaw] =
     parts;
   if (version !== FORMAT_VERSION) return null;
 
-  const savedOn = decodeSavedOn(savedOnRaw);
+  const savedMoment = decodeSavedMoment(savedMomentRaw);
   const fasting = decodeFasting(fastingRaw);
   const diabetes = decodeDiabetes(diabetesRaw);
   const body = decodeBody(ruleset, bodyRaw);
   const female = decodeFemale(ruleset, femaleRaw);
 
   if (
-    savedOn === null ||
+    savedMoment === null ||
     fasting === undefined ||
     diabetes === undefined ||
     body === undefined ||
@@ -184,7 +186,11 @@ export function decodeAnswers(
     return null;
   }
 
-  return { savedOn, answers: { fasting, diabetes, body, female } };
+  return {
+    savedOn: savedMoment.savedOn,
+    savedAt: savedMoment.savedAt,
+    answers: { fasting, diabetes, body, female },
+  };
 }
 
 /* ── 쓰기 ────────────────────────────────────────────────── */
@@ -260,14 +266,25 @@ function encodeTime(t: TimeAnswer): string {
 /* ── 읽기 ────────────────────────────────────────────────── */
 /* 형식 오류는 undefined, "답하지 않음" 은 null 이다. 둘은 다른 뜻이다 */
 
-/** "20260820" → "2026-08-20". 2월 30일 같은 날짜는 받지 않는다 */
-function decodeSavedOn(raw: string): string | null {
-  if (!/^\d{8}$/.test(raw)) return null;
+/**
+ * "202608200805" → `{ savedOn: "2026-08-20", savedAt: "08:05" }`
+ *
+ * **판 2 부터 시각이 붙었다.** 판 1 의 8자리는 여기서 걸러진다 — 형식 판이
+ * 먼저 막지만, 이 함수만 따로 불려도 옛 값을 새 뜻으로 읽지 않는다.
+ * 2월 30일 같은 날짜와 25시 같은 시각은 받지 않는다.
+ */
+function decodeSavedMoment(
+  raw: string,
+): { savedOn: string; savedAt: string } | null {
+  if (!/^\d{12}$/.test(raw)) return null;
 
   const year = Number(raw.slice(0, 4));
   const month = Number(raw.slice(4, 6));
   const day = Number(raw.slice(6, 8));
+  const hour = Number(raw.slice(8, 10));
+  const minute = Number(raw.slice(10, 12));
   if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  if (hour > 23 || minute > 59) return null;
 
   // Date.UTC 는 넘치면 다음 달로 굴러간다. 되돌려 확인한다
   const back = new Date(Date.UTC(year, month - 1, day));
@@ -279,7 +296,10 @@ function decodeSavedOn(raw: string): string | null {
     return null;
   }
 
-  return `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`;
+  return {
+    savedOn: `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`,
+    savedAt: `${raw.slice(8, 10)}:${raw.slice(10, 12)}`,
+  };
 }
 
 function decodeFasting(raw: string): Answers["fasting"] | undefined {

@@ -158,6 +158,12 @@ export default function SummaryCard({
         <p className="mt-1 text-[1.06rem] text-slate-300">
           {formatLocation(location)}
         </p>
+        {/* 언제 답한 것인지. 날짜가 같아도 아침 답과 오후 답은 다르다 —
+            직원이 "그 뒤로 드신 것 없으시죠?" 를 한 번만 묻게 한다.
+            오래됐는지는 판정하지 않는다. 사실만 적는다 */}
+        <p className="mt-2 text-[1rem] text-slate-400">
+          {card.answered_at.replace("{time}", stored.savedAt)}
+        </p>
       </header>
 
       <Badge verdict={verdict} />
@@ -171,6 +177,20 @@ export default function SummaryCard({
         <Row label={card.rows.body} value={bodyValue(ruleset, answers)} />
         <Row label={card.rows.female} value={femaleValue(ruleset, answers)} />
       </dl>
+
+      {/* 해당하는 환자에게만 붙는 사실 한 줄.
+          당뇨약은 시각을 지켜도 접수에서 잰 혈당이 높으면 되돌아간다.
+          그 사실이 타임라인에만 있으면 🟢 를 받은 당뇨 환자는 되돌아갈
+          실제 사유를 모른 채 온다. 판정이 아니므로 배지를 건드리지 않고,
+          주의 항목 위에 둔다 — 배지를 올린 사유와 섞이면 안 된다 */}
+      {conditionalNotes(ruleset, answers).map((note) => (
+        <p
+          key={note}
+          className="mt-4 rounded-xl border-2 border-slate-300 bg-slate-50 px-4 py-3 text-[1.06rem] leading-snug text-slate-700"
+        >
+          {note}
+        </p>
+      ))}
 
       {/* 주의가 필요한 항목만 다시 모은다. 위 표를 다시 읽지 않아도 되게 */}
       {verdict.reasons.length > 0 && (
@@ -334,6 +354,19 @@ function fastingValue(ruleset: ExamRuleset, a: Answers): string {
   if (a.fasting.kept) return v.fasting_kept;
   const when = a.fasting.time ? ` · ${timeText(ruleset, a.fasting.time)}` : "";
   return `${v.fasting_broken}${when}`;
+}
+
+/**
+ * "예" 라고 답한 조건 문항의 카드 문구.
+ *
+ * 룰셋에 `card_note` 가 없으면 아무것도 붙지 않는다 — 검사 종류가 늘어도
+ * 여기는 그대로다. 조건 문항의 응답이 `answers.diabetes` 한 자리뿐이라
+ * id 로 잇는 것은 `lib/triage.ts` 의 `usesDiabetes` 와 같은 방식이다.
+ */
+function conditionalNotes(ruleset: ExamRuleset, a: Answers): string[] {
+  return ruleset.conditional
+    .filter((c) => c.card_note && c.id === "diabetes" && a.diabetes?.uses)
+    .map((c) => c.card_note!);
 }
 
 function diabetesValue(ruleset: ExamRuleset, a: Answers): string {

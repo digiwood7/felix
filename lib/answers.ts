@@ -1,5 +1,5 @@
 import type { Answers } from "./questions";
-import { todayInKST } from "./koreanTime";
+import { nowTimeInKST, todayInKST } from "./koreanTime";
 
 /**
  * 문답 응답의 보관 — **변하는 것과 변하지 않는 것을 나눠 둔다.**
@@ -31,6 +31,19 @@ export interface StoredAnswers {
   answers: Answers;
   /** 답한 날짜 (KST, "YYYY-MM-DD"). 카드가 오늘 것인지 가리는 데 쓴다 */
   savedOn: string;
+  /**
+   * 답한 시각 (KST, "HH:MM"). **카드에 사실로 적는다.**
+   *
+   * 날짜만으로는 같은 날 안의 변화를 잡지 못한다 — 아침 8시에 "당뇨약
+   * 안 씀 · 금식 지킴" 으로 🟢 를 만들고, 11시에 약을 먹고, 17:30 에 그
+   * 카드를 내밀면 날짜가 같아서 그대로 통과한다. **카드가 8시의 사실을
+   * 17:30 에 말하게 된다.**
+   *
+   * 막지 않는다. 몇 시간이 지나야 오래된 것인지는 값이 아니라 판단이고,
+   * 이 서비스는 판단하지 않는다. 대신 **언제 답한 것인지를 적어**
+   * 직원이 "그 뒤로 드신 것 없으시죠?" 한 번만 묻게 한다.
+   */
+  savedAt: string;
 }
 
 /**
@@ -40,7 +53,14 @@ export interface StoredAnswers {
  * 자정 언저리에 두 값이 갈린다. 주소에 실을 것도 이 값이라야 한다.
  */
 export function saveAnswers(answers: Answers): StoredAnswers {
-  const stored: StoredAnswers = { answers, savedOn: todayInKST() };
+  // 날짜와 시각을 같은 Date.now() 에서 뽑는다. 따로 부르면 자정 언저리에
+  // 날짜는 어제인데 시각은 오늘인 값이 만들어진다
+  const now = Date.now();
+  const stored: StoredAnswers = {
+    answers,
+    savedOn: todayInKST(now),
+    savedAt: nowTimeInKST(now),
+  };
 
   try {
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(stored));
@@ -72,7 +92,9 @@ export function loadAnswers(): StoredAnswers | null {
     if (!raw) return null;
     const stored = JSON.parse(raw) as StoredAnswers;
     // 형태가 다르면 없는 것으로 본다. 옛 응답으로 카드를 그리지 않는다
-    return stored?.answers && stored?.savedOn ? stored : null;
+    return stored?.answers && stored?.savedOn && stored?.savedAt
+      ? stored
+      : null;
   } catch {
     return null;
   }

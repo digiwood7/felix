@@ -22,8 +22,12 @@ import { f18FdgPet } from "./rules";
  *      메신저가 끝을 잘라 먹기도 한다
  */
 
-function storedOf(patch: Partial<Answers>, savedOn = "2026-08-20"): StoredAnswers {
-  return { savedOn, answers: { ...emptyAnswers(), ...patch } };
+function storedOf(
+  patch: Partial<Answers>,
+  savedOn = "2026-08-20",
+  savedAt = "08:05",
+): StoredAnswers {
+  return { savedOn, savedAt, answers: { ...emptyAnswers(), ...patch } };
 }
 
 const FULL = storedOf({
@@ -157,6 +161,16 @@ describe("인코딩 — 넣은 것이 그대로 나온다", () => {
       expect(roundTrip(storedOf({}, date))?.savedOn).toBe(date);
     }
   });
+
+  /**
+   * 답한 시각도 그대로 돌아와야 한다 — 카드에 사실로 적히는 값이다.
+   * 한 자리라도 밀리면 "8시에 답한 카드" 가 다른 시각으로 읽힌다.
+   */
+  it("답한 시각이 그대로 돌아온다", () => {
+    for (const at of ["00:00", "08:05", "11:30", "23:59"]) {
+      expect(roundTrip(storedOf({}, "2026-08-20", at))?.savedAt).toBe(at);
+    }
+  });
 });
 
 describe("인코딩 — 주소에 실려도 되는 문자열인가", () => {
@@ -175,9 +189,17 @@ describe("인코딩 — 주소에 실려도 되는 문자열인가", () => {
     expect(encodeURIComponent(encoded)).toBe(encoded);
   });
 
-  // 카톡으로 보내는 링크다. 길면 잘리거나 두 줄이 된다
-  it("가장 긴 답도 40자를 넘지 않는다", () => {
-    expect(encoded.length).toBeLessThanOrEqual(40);
+  /**
+   * 카톡으로 보내는 링크다. 길면 잘리거나 두 줄이 된다.
+   *
+   * **판 2 에서 40 → 44 로 올렸다 (2026-08-24).** 답한 시각 `HHMM` 4자가
+   * 붙었다. 40 은 외부에서 온 제한이 아니라 스스로 정한 어림수였고,
+   * 전체 주소가 90자 남짓이라 4자로 줄바꿈이 달라지지 않는다.
+   * **한도를 늘린 것이지 없앤 것이 아니다** — 자유 입력이 없는 한
+   * 이 값은 항목 수에만 비례하고, 늘어나면 여기서 먼저 걸린다.
+   */
+  it("가장 긴 답도 44자를 넘지 않는다", () => {
+    expect(encoded.length).toBeLessThanOrEqual(44);
   });
 });
 
@@ -195,8 +217,32 @@ describe("인코딩 — 망가진 주소", () => {
    * 버리면 다시 답하게 될 뿐이다.
    */
   it("모르는 형식 판은 통째로 버린다", () => {
-    expect(decodeAnswers(f18FdgPet, encoded.replace(/^1/, "2"))).toBeNull();
-    expect(decodeAnswers(f18FdgPet, encoded.replace(/^1/, ""))).toBeNull();
+    expect(decodeAnswers(f18FdgPet, encoded.replace(/^2/, "3"))).toBeNull();
+    expect(decodeAnswers(f18FdgPet, encoded.replace(/^2/, ""))).toBeNull();
+  });
+
+  /**
+   * 판 1 은 답한 **날짜만** 담았다. 판 2 는 같은 자리에 날짜와 시각을
+   * 담는다. 자리 뜻이 바뀌었으므로 옛 주소는 읽지 않고 버린다 —
+   * 읽어 버리면 "8시에 답한 카드" 인지 모른 채 🟢 가 그려진다.
+   */
+  it("판 1 주소는 읽지 않는다 — 답한 시각이 없던 판이다", () => {
+    expect(
+      decodeAnswers(f18FdgPet, "1-20260820-y-n-168x62-y02.4"),
+    ).toBeNull();
+  });
+
+  // 주소는 사람이 손으로 고칠 수 있다. 25시 · 60분을 그대로 카드에 적지 않는다
+  it("있을 수 없는 시각은 버린다", () => {
+    for (const raw of ["202608202505", "202608200860", "2026082008"]) {
+      expect(
+        decodeAnswers(f18FdgPet, `2-${raw}-y-n-168x62-n`),
+      ).toBeNull();
+    }
+    // 경계는 살아 있어야 한다 — 00:00 과 23:59 는 정상이다
+    for (const raw of ["202608200000", "202608202359"]) {
+      expect(decodeAnswers(f18FdgPet, `2-${raw}-y-n-168x62-n`)).not.toBeNull();
+    }
   });
 
   it("칸 수가 다르면 null", () => {
@@ -369,7 +415,7 @@ describe("인코딩 — 형식 판과 룰셋의 관계", () => {
       "lactation",
       "menstruation",
     ]);
-    expect(FORMAT_VERSION).toBe("1");
+    expect(FORMAT_VERSION).toBe("2");
   });
 
   it("항목 번호는 룰셋에서 읽는다 — 코드에 이름이 박혀 있지 않다", () => {

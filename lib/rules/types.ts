@@ -169,6 +169,17 @@ export interface ConditionalRule {
   /** `{time}` 을 쓸 수 있다 */
   speech_text?: SpeechText;
   after_text: string;
+  /**
+   * "예" 라고 답한 환자의 **요약카드에만** 붙는 한 줄.
+   *
+   * 이 문항에 해당하는 환자에게는 마지노선 말고도 알아야 할 것이 더
+   * 있는 경우에 쓴다. 당뇨약이 그렇다 — 시각을 지켜도 접수에서 잰
+   * 혈당이 높으면 되돌아간다. 그 사실이 타임라인에만 있으면, 🟢 를 받은
+   * 당뇨 환자는 **되돌아갈 실제 사유 1순위를 모른 채 병원에 온다.**
+   *
+   * 판정이 아니다. 배지를 올리지도 내리지도 않는다 — 사실 한 줄이다.
+   */
+  card_note?: string;
 }
 
 export interface Restriction {
@@ -339,6 +350,14 @@ export interface CardCopy {
   >;
   /** 주의가 필요한 항목을 모아 보여주는 자리의 제목 */
   reasons_title: string;
+  /**
+   * 언제 답한 것인지. `{time}` 자리에 답한 시각이 들어간다.
+   *
+   * 날짜만으로는 같은 날 안의 변화를 잡지 못한다. 아침에 만든 🟢 를
+   * 오후에 내밀어도 날짜가 같아 그대로 통과한다. **몇 시간이 지나야
+   * 오래된 것인지는 판단이므로 하지 않고, 사실만 적는다.**
+   */
+  answered_at: string;
   /** 문답 없이 카드에 바로 들어온 경우 */
   empty: string;
   empty_action: string;

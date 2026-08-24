@@ -63,6 +63,17 @@ export function hourInKST(now: number = Date.now()): number {
 }
 
 /**
+ * 지금이 KST 로 몇 시 몇 분인지 — "08:05"
+ *
+ * 문답에 답한 시각을 카드에 적는 데 쓴다 (PRD §8 F2).
+ * `todayInKST` 와 같은 규칙이다 — 계산 경로가 아니라 표기용이고,
+ * 기기 타임존이 무엇이든 같은 값이 나온다.
+ */
+export function nowTimeInKST(now: number = Date.now()): string {
+  return new Date(now + KST_OFFSET_MS).toISOString().slice(11, 16);
+}
+
+/**
  * 지금(KST)이 그 날짜 · 시각보다 이른가.
  *
  * `todayInKST` 와 같은 규칙이다 — **계산 경로에서 쓰지 않는다.**
