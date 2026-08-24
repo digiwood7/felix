@@ -5,7 +5,6 @@ import type { Answers } from "./questions";
 import { fillPhone } from "./reservationLabel";
 import { f18FdgPet } from "./rules";
 import type { ExamRuleset } from "./rules/types";
-import { buildTimeline } from "./schedule";
 import type { Reservation } from "./schedule";
 import { triage } from "./triage";
 
@@ -18,7 +17,15 @@ import { triage } from "./triage";
  *      배지가 따라 바뀌지 않으면, 어딘가에 하드코딩이 남아 있다는 뜻이다.
  */
 
-// 8월 20일(목) 14:25 예약 → 금식 08:00, 당뇨 마지노선 10:00
+/**
+ * 8월 20일(목) 14:25 예약.
+ *
+ * 화면 표시(내림) 금식 08:00 · 당뇨 마지노선 10:00
+ * **판정선(예약 기준)** 금식 08:25 · 당뇨 10:25
+ *
+ * 둘이 25분 어긋나는 예약을 일부러 골랐다. 판정에 표시값이 섞이면
+ * 여기서 걸린다 (PRD §9.4).
+ */
 const RESERVATION: Reservation = {
   year: 2026,
   month: 8,
@@ -32,11 +39,6 @@ const RESERVATION: Reservation = {
 const locationOf = (id: string) =>
   f18FdgPet.locations.options.find((o) => o.id === id)!;
 
-const TIMELINE = buildTimeline(f18FdgPet, {
-  reservation: RESERVATION,
-  location: locationOf("cancer"),
-});
-
 function verdictOf(
   patch: Partial<Answers>,
   ruleset: ExamRuleset = f18FdgPet,
@@ -46,7 +48,6 @@ function verdictOf(
     ruleset,
     answers: { ...emptyAnswers(), ...patch },
     reservation: RESERVATION,
-    timeline: TIMELINE,
     location: locationOf(locationId),
   });
 }
@@ -222,31 +223,31 @@ describe("배지 — tell", () => {
   });
 
   /**
-   * 당뇨약도 같은 규칙이다 — 걸러 낸 이유와 재는 자가 다르다.
+   * 판정선은 **예약 기준 정확히 4시간**이다. 내림된 표시값이 아니다.
    *
-   * 걸러 내는 기준은 **화면에 안내한 마지노선**(내림된 10:00)이고,
-   * 얼마나 늦었는지는 **예약 시각**에서 잰다 (실무 기준이 "몇 시간
-   * 전이냐" 이므로). 그래서 표시값은 넘겼지만 4시간은 지킨 구간이
-   * 생긴다. 그 구간에 "1시간 이내 초과" 를 적으면 사실이 아니다.
+   * 내림은 **안내를 이르게 하려고** 있는 것이지 실무 기준을 최대 59분
+   * 앞당기는 것이 아니다. 표시값을 판정선으로 쓰면 **정확히 4시간 전에
+   * 쓴 환자가 걸린다.** 규칙을 지킨 환자를 접수로 보내면 그 문답이 곧
+   * 줄이려던 업무다.
    */
-  it("표시된 마지노선은 넘겼지만 4시간을 지켰으면 초과분을 말하지 않는다", () => {
+  it("표시된 마지노선은 넘겼어도 4시간을 지켰으면 아무 말도 하지 않는다", () => {
     const v = verdictOf({
       ...CLEAN,
       // 마지노선 표시는 10:00, 예약 기준 4시간 지점은 10:25.
       // 10:10 은 표시값은 넘겼지만 예약 기준으로는 4시간 15분 전이다
       diabetes: { uses: true, time: { day: "today", hour: 10, minute: 10 } },
     });
-    expect(v.level).toBe("tell");
-    expect(v.reasons.map((r) => r.label)).toEqual(["당뇨약 사용 시각 확인 필요"]);
+    expect(v.level).toBe("ok");
+    expect(v.reasons).toEqual([]);
   });
 
-  it("예약 기준 4시간 정각도 초과분이 0 이므로 숫자를 말하지 않는다", () => {
+  it("예약 기준 4시간 정각까지는 아무 말도 하지 않는다", () => {
     const v = verdictOf({
       ...CLEAN,
       diabetes: { uses: true, time: { day: "today", hour: 10, minute: 25 } },
     });
-    expect(v.level).toBe("tell");
-    expect(v.reasons.map((r) => r.label)).toEqual(["당뇨약 사용 시각 확인 필요"]);
+    expect(v.level).toBe("ok");
+    expect(v.reasons).toEqual([]);
   });
 
   it("1분이라도 늦으면 초과분을 말한다", () => {
@@ -288,7 +289,6 @@ describe("배지 — tell", () => {
   it("당뇨약 세 갈래도 서로 겹치지 않는다", () => {
     for (const time of [
       null,
-      { day: "today", hour: 10, minute: 10 } as const,
       { day: "today", hour: 10, minute: 26 } as const,
       { day: "today", hour: 11, minute: 25 } as const,
       { day: "today", hour: 12, minute: 25 } as const,

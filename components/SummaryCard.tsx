@@ -91,7 +91,6 @@ export default function SummaryCard({
             ruleset,
             answers: fresh.answers,
             reservation,
-            timeline,
             location,
           }).level
         : null,
@@ -142,7 +141,6 @@ export default function SummaryCard({
     ruleset,
     answers,
     reservation,
-    timeline,
     location,
   });
 
