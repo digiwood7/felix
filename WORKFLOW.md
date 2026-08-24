@@ -668,6 +668,7 @@ app/api/log/route.ts 에 익명 이벤트 수집 엔드포인트를 만들어줘
 - [ ] iOS Safari 15 / Android Chrome 실기기 확인
 - [ ] 금지 표현 grep 0건
 - [ ] **kill switch 동작 확인** — `NEXT_PUBLIC_SERVICE_STATUS=maintenance` 로 전 화면 대체
+- [ ] **배포된 서비스에서도 한 번 눌러 본다** — 값 변경만으로는 바뀌지 않는다. Vercel 은 환경변수를 배포에 묶으므로 **Redeploy 까지 해야** 반영된다 (PRD §18 R5 "끄는 절차"). 사고 때 처음 눌러 보는 것이 이 방어선에서 가장 위험한 부분이다
 - [ ] `TZ=UTC`, `TZ=America/New_York` 에서도 계산 결과 동일
 
 > **측정 방법 주의 (2026-08-20):** Chrome DevTools/CDP 의 네트워크 스로틀링은
