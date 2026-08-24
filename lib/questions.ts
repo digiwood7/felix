@@ -51,6 +51,20 @@ export interface Question {
   /** 갈래를 타면 이어서 묻는 시각 */
   timeTitle?: string;
   time?: TimeCopy;
+  /**
+   * 이 시각과 같거나 이르면 금식을 지킨 것이다 (금식 문항 전용).
+   *
+   * "아니요" 와 어긋나는 시각을 골랐을 때 되묻기를 띄우는 기준.
+   * 없으면 되묻지 않는다.
+   */
+  keptBefore?: TimeAnswer;
+  recheck?: {
+    note: string;
+    ask: string;
+    hint: string;
+    yesLabel: string;
+    noLabel: string;
+  };
   /** 갈래를 타면 이어서 고르는 항목 */
   detailTitle?: string;
   options?: { id: string; label: string }[];
@@ -76,6 +90,47 @@ export interface ScheduleHints {
   fastingStart?: string;
   /** 당뇨약 · 인슐린 마지노선 */
   diabetesCutoff?: string;
+  /**
+   * 금식 시작을 문답의 어제/오늘 + 시각으로 옮긴 값.
+   *
+   * 화면에 뜨는 `fastingStart` 와 **같은 항목에서 나온다.** 다시 계산하면
+   * 환자가 읽은 시각과 비교 기준이 갈릴 수 있다.
+   */
+  fastingStartAt?: TimeAnswer;
+}
+
+/**
+ * 타임라인의 날짜 · 시각을 예약일 기준 상대 시각으로 옮긴다.
+ *
+ * 예약일 당일과 전날만 돌려준다. 그 밖이면 undefined — 되묻기를
+ * 띄우지 않는 쪽으로 떨어진다. 금식은 6시간이라 전날을 넘지 않지만,
+ * 룰셋의 시간이 늘면 이 함수가 먼저 막는다.
+ *
+ * Date.UTC 만 쓴다. 기기 타임존이 무엇이든 결과가 같다 (PRD §9.2).
+ */
+export function relativeTimeOf(
+  date: string,
+  time: string,
+  examDate: string,
+): TimeAnswer | undefined {
+  const days = (d: string) =>
+    Date.UTC(Number(d.slice(0, 4)), Number(d.slice(5, 7)) - 1, Number(d.slice(8, 10)));
+
+  const diff = (days(examDate) - days(date)) / 86_400_000;
+  if (diff !== 0 && diff !== 1) return undefined;
+
+  return {
+    day: diff === 0 ? "today" : "yesterday",
+    hour: Number(time.slice(0, 2)),
+    minute: Number(time.slice(3, 5)),
+  };
+}
+
+/** 앞의 시각이 뒤의 시각과 같거나 이른가. 어제가 오늘보다 앞이다 */
+export function atOrBefore(a: TimeAnswer, b: TimeAnswer): boolean {
+  const rank = (t: TimeAnswer) =>
+    (t.day === "yesterday" ? 0 : 1440) + t.hour * 60 + t.minute;
+  return rank(a) <= rank(b);
 }
 
 export function buildQuestions(
@@ -99,6 +154,17 @@ export function buildQuestions(
       noLabel: q.fasting.no_label,
       timeTitle: q.fasting.time_ask,
       time: q.time,
+      keptBefore: hints.fastingStartAt,
+      // 되묻기는 기준 시각이 있을 때만 성립한다
+      recheck: hints.fastingStartAt && hints.fastingStart
+        ? {
+            note: q.fasting.recheck_note.replace("{time}", hints.fastingStart),
+            ask: q.fasting.recheck_ask,
+            hint: itemsLine(q.fasting.recheck_hint, ruleset.fasting.forbidden),
+            yesLabel: q.fasting.recheck_yes,
+            noLabel: q.fasting.recheck_no,
+          }
+        : undefined,
     },
     {
       id: "diabetes",

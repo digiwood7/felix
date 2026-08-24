@@ -7,6 +7,7 @@ import type { Level, TriageCondition } from "./types";
 const LEVELS: Level[] = ["ok", "tell", "call"];
 
 const TRIAGE_CONDITIONS: TriageCondition[] = [
+  "fasting.short_unmeasured",
   "fasting.short",
   "fasting.short_over_grace",
   "diabetes.after_cutoff",

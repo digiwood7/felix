@@ -32,6 +32,7 @@ export type TimeOfDay = string;
  * 조건 판정과 등급을 분리해, level 값만 JSON에서 바꿀 수 있게 한다.
  */
 export type TriageCondition =
+  | "fasting.short_unmeasured"
   | "fasting.short"
   | "fasting.short_over_grace"
   | "diabetes.after_cutoff"
@@ -197,6 +198,18 @@ export interface QuestionCopy {
     no_label: string;
     /** "아니요" 를 골랐을 때 이어서 묻는다 */
     time_ask: string;
+    /**
+     * "아니요" 인데 답한 시각이 오히려 금식을 지킨 시각일 때 되묻는다.
+     *
+     * 두 답이 어긋난 상태를 서비스가 혼자 정하지 않는다 — 커피 한 잔으로
+     * 금식이 깨졌는지는 환자만 안다. `{time}` 은 금식 시작 시각,
+     * `{items}` 는 fasting.forbidden 이 들어간다.
+     */
+    recheck_note: string;
+    recheck_ask: string;
+    recheck_hint: string;
+    recheck_yes: string;
+    recheck_no: string;
   };
   diabetes: {
     /** 질문 자체는 conditional.diabetes.ask 를 쓴다. 여기 두면 두 벌이 된다 */

@@ -9,6 +9,7 @@ import type { Answers, DayRef, Question, TimeAnswer } from "@/lib/questions";
 import {
   MENSTRUATION_ID,
   NONE_ID,
+  atOrBefore,
   emptyAnswers,
   isAnswered,
   isValidNumber,
@@ -211,6 +212,15 @@ function Body({
   /** 방금 고른 답을 함께 넘긴다. 상태 반영을 기다리지 않기 위해서다 */
   onAdvance: (a: Answers) => void;
 }) {
+  /**
+   * 되묻기를 "그래도 못 지켰다" 로 넘긴 시각.
+   *
+   * 시각 자체를 담아 둔다 — 환자가 시각을 다시 고치면 값이 달라져
+   * 되묻기가 되살아난다. boolean 으로 두면 한 번 넘긴 뒤 아무 시각을
+   * 골라도 다시 묻지 않는다.
+   */
+  const [rechecked, setRechecked] = useState<string | null>(null);
+
   /** 고르자마자 넘어가는 버튼 — 한 번 누르는 것으로 끝나는 답에만 쓴다 */
   function answerAndAdvance(next: Answers) {
     onChange(next);
@@ -255,6 +265,18 @@ function Body({
                 }
               />
             </>
+          )}
+          {broken && showRecheck(question, answers, rechecked) && (
+            <Recheck
+              copy={question.recheck!}
+              onKept={() =>
+                answerAndAdvance({
+                  ...answers,
+                  fasting: { kept: true, time: null },
+                })
+              }
+              onBroken={() => setRechecked(stampOf(answers.fasting!.time!))}
+            />
           )}
         </>
       );
@@ -442,6 +464,71 @@ function SubTitle({ children }: { children: React.ReactNode }) {
     <p className="mt-6 mb-3 text-[1.18rem] font-bold text-slate-900">
       {children}
     </p>
+  );
+}
+
+/** 시각을 비교 가능한 한 덩어리로. 되묻기를 넘긴 시각을 기억하는 데 쓴다 */
+function stampOf(t: TimeAnswer): string {
+  return `${t.day}${t.hour}:${t.minute}`;
+}
+
+/**
+ * 되묻기를 띄울 상태인가.
+ *
+ * "못 지켰다" 고 했는데 고른 시각이 금식 시작보다 이르거나 같다.
+ * 두 답이 어긋났으므로 어느 쪽이 맞는지 **환자에게 되묻는다.**
+ * 서비스가 골라서 답을 바꾸지 않는다 — 커피 한 잔으로 금식이
+ * 깨졌는지는 시계가 모른다.
+ */
+function showRecheck(
+  question: Question,
+  answers: Answers,
+  rechecked: string | null,
+): boolean {
+  const time = answers.fasting?.time;
+  if (!time || !question.keptBefore || !question.recheck) return false;
+  if (rechecked === stampOf(time)) return false;
+  return atOrBefore(time, question.keptBefore);
+}
+
+/**
+ * 어긋난 답을 되묻는다.
+ *
+ * 넘어가는 길을 막지 않는다 — 그대로 두고 "다음" 을 눌러도 된다.
+ * 그 경우 답은 "못 지켰다" 로 남고, 카드에는 부족분을 말하지 않는
+ * 사유가 붙는다 (룰셋 fasting.short_unmeasured).
+ */
+function Recheck({
+  copy,
+  onKept,
+  onBroken,
+}: {
+  copy: NonNullable<Question["recheck"]>;
+  onKept: () => void;
+  onBroken: () => void;
+}) {
+  const base =
+    "min-h-[60px] flex-1 rounded-2xl border-2 border-slate-500 bg-white text-[1.12rem] font-bold text-slate-800";
+
+  return (
+    <section className="mt-6 rounded-2xl border-2 border-amber-700 bg-amber-50 p-4">
+      <p className="text-[1.06rem] leading-snug text-amber-900">{copy.note}</p>
+      <p className="mt-3 text-[1.18rem] leading-snug font-bold text-slate-900">
+        {copy.ask}
+      </p>
+      <p className="mt-1 text-[1.02rem] leading-snug text-slate-700">
+        {copy.hint}
+      </p>
+      <div className="mt-3 flex gap-3">
+        {/* 왼쪽이 언제나 긍정이다. TwoChoice 와 자리를 맞춘다 */}
+        <button type="button" onClick={onBroken} className={base}>
+          {copy.yesLabel}
+        </button>
+        <button type="button" onClick={onKept} className={base}>
+          {copy.noLabel}
+        </button>
+      </div>
+    </section>
   );
 }
 

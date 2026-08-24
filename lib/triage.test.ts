@@ -171,6 +171,68 @@ describe("배지 — tell", () => {
     });
     expect(v.level).toBe("tell");
   });
+
+  /**
+   * 부족분을 말할 수 없는 두 경우는 숫자를 붙이지 않는다.
+   *
+   * 20시간을 굶은 환자에게 "1시간 이내 부족" 이 붙으면 카드가
+   * 직원에게 틀린 말을 하는 것이다. 등급은 그대로 tell 이다 —
+   * 못 지켰다는 답 자체는 받는다.
+   */
+  it("답한 시각이 오히려 금식을 지킨 시각이면 부족분을 말하지 않는다", () => {
+    const v = verdictOf({
+      ...CLEAN,
+      fasting: {
+        kept: false,
+        time: { day: "yesterday", hour: 21, minute: 30 },
+      },
+    });
+    expect(v.level).toBe("tell");
+    expect(v.reasons.map((r) => r.label)).toEqual(["금식 여부 확인 필요"]);
+  });
+
+  it("마지막 식사 시각을 답하지 않아도 부족분을 말하지 않는다", () => {
+    const v = verdictOf({
+      ...CLEAN,
+      fasting: { kept: false, time: null },
+    });
+    expect(v.level).toBe("tell");
+    expect(v.reasons.map((r) => r.label)).toEqual(["금식 여부 확인 필요"]);
+  });
+
+  it("금식 시작 정각에 먹었으면 부족분이 0 이므로 숫자를 말하지 않는다", () => {
+    const v = verdictOf({
+      ...CLEAN,
+      // 금식 시작 08:00 정각 — 모자라지 않았다
+      fasting: { kept: false, time: { day: "today", hour: 8, minute: 25 } },
+    });
+    expect(v.level).toBe("tell");
+    expect(v.reasons.map((r) => r.label)).toEqual(["금식 여부 확인 필요"]);
+  });
+
+  it("1분이라도 모자라면 부족분을 말한다", () => {
+    const v = verdictOf({
+      ...CLEAN,
+      fasting: { kept: false, time: { day: "today", hour: 8, minute: 26 } },
+    });
+    expect(v.level).toBe("tell");
+    expect(v.reasons.map((r) => r.label)).toEqual([
+      "금식 시간 부족 (1시간 이내)",
+    ]);
+  });
+
+  it("세 갈래는 서로 겹치지 않는다 — 사유는 언제나 한 줄이다", () => {
+    for (const time of [
+      null,
+      { day: "yesterday", hour: 21, minute: 30 } as const,
+      { day: "today", hour: 8, minute: 25 } as const,
+      { day: "today", hour: 9, minute: 25 } as const,
+      { day: "today", hour: 10, minute: 25 } as const,
+    ]) {
+      const v = verdictOf({ ...CLEAN, fasting: { kept: false, time } });
+      expect(v.reasons).toHaveLength(1);
+    }
+  });
 });
 
 describe("배지 — call", () => {

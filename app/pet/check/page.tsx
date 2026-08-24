@@ -3,7 +3,11 @@ import { redirect } from "next/navigation";
 import LogView from "@/components/LogView";
 import QuestionFlow from "@/components/QuestionFlow";
 import { parseReservationParam } from "@/lib/reservationParam";
-import { buildQuestions, type ScheduleHints } from "@/lib/questions";
+import {
+  buildQuestions,
+  relativeTimeOf,
+  type ScheduleHints,
+} from "@/lib/questions";
 import { f18FdgPet } from "@/lib/rules";
 import { buildTimeline, type Timeline } from "@/lib/schedule";
 import { locationParam, oneParam } from "@/lib/searchParam";
@@ -59,6 +63,7 @@ export default async function CheckScreen({
  */
 function hintsOf(timeline: Timeline): ScheduleHints {
   const hints: ScheduleHints = {};
+  const examDate = timeline[timeline.length - 1].date;
 
   for (const day of timeline) {
     for (const item of day.items) {
@@ -66,6 +71,7 @@ function hintsOf(timeline: Timeline): ScheduleHints {
       const label = `${labelOf(day.date, day.weekday)} ${item.time}`;
       if (item.kind === "fasting" && !hints.fastingStart) {
         hints.fastingStart = label;
+        hints.fastingStartAt = relativeTimeOf(day.date, item.time, examDate);
       }
       if (item.kind === "conditional" && !hints.diabetesCutoff) {
         hints.diabetesCutoff = label;

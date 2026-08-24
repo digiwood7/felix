@@ -96,7 +96,12 @@
       "ask": "6시간 금식 하셨나요?",
       "yes_label": "네",
       "no_label": "아니요",
-      "time_ask": "마지막으로 드신 때는 언제인가요?"
+      "time_ask": "마지막으로 드신 때는 언제인가요?",
+      "recheck_note": "{time} 이전에 드신 것이 마지막이라면 6시간 금식을 지키신 것입니다",
+      "recheck_ask": "물 외에 드신 것이 있으셨나요?",
+      "recheck_hint": "{items}도 해당됩니다",
+      "recheck_yes": "네, 있었습니다",
+      "recheck_no": "아니요, 없었습니다"
     },
     "diabetes": {
       "yes_label": "예",
@@ -193,6 +198,11 @@
   ],
 
   "triage": [
+    {
+      "when": "fasting.short_unmeasured",
+      "level": "tell",
+      "label": "금식 여부 확인 필요"
+    },
     {
       "when": "fasting.short",
       "level": "tell",

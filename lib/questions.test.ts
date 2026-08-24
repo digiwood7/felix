@@ -3,9 +3,11 @@ import { describe, expect, it } from "vitest";
 import {
   MENSTRUATION_ID,
   NONE_ID,
+  atOrBefore,
   buildQuestions,
   emptyAnswers,
   isAnswered,
+  relativeTimeOf,
   type Answers,
 } from "./questions";
 import { f18FdgPet } from "./rules";
@@ -210,5 +212,86 @@ describe("다음으로 넘어갈 수 있는지", () => {
   // 룰셋 flags 에 없는 id 이므로 배지 판정에는 걸리지 않는다
   it("해당사항 없음은 룰셋 flags 와 겹치지 않는다", () => {
     expect(f18FdgPet.flags.map((f) => f.id)).not.toContain(NONE_ID);
+  });
+});
+
+/**
+ * 어긋난 답을 되묻는 기준 — PRD §8 F2
+ *
+ * "못 지켰다" 고 답했는데 고른 시각이 오히려 금식을 지킨 시각이면
+ * 화면이 한 번 되묻는다. 그 판단에 쓰는 두 함수다.
+ */
+describe("금식 되묻기 기준", () => {
+  it("예약 당일과 전날만 상대 시각으로 옮긴다", () => {
+    expect(relativeTimeOf("2026-08-20", "08:00", "2026-08-20")).toEqual({
+      day: "today",
+      hour: 8,
+      minute: 0,
+    });
+    expect(relativeTimeOf("2026-08-19", "21:00", "2026-08-20")).toEqual({
+      day: "yesterday",
+      hour: 21,
+      minute: 0,
+    });
+  });
+
+  it("월 · 연 경계를 넘어도 전날은 전날이다", () => {
+    expect(relativeTimeOf("2026-07-31", "23:00", "2026-08-01")).toEqual({
+      day: "yesterday",
+      hour: 23,
+      minute: 0,
+    });
+    expect(relativeTimeOf("2025-12-31", "18:00", "2026-01-01")).toEqual({
+      day: "yesterday",
+      hour: 18,
+      minute: 0,
+    });
+    // 윤년 2월 29일
+    expect(relativeTimeOf("2028-02-29", "20:00", "2028-03-01")).toEqual({
+      day: "yesterday",
+      hour: 20,
+      minute: 0,
+    });
+  });
+
+  /**
+   * 이틀 전이 나오면 되묻지 않는다. 문답의 시각 선택지가 어제 · 오늘
+   * 둘뿐이라, 그보다 이른 기준과는 비교 자체가 성립하지 않는다.
+   */
+  it("이틀 이상 전이면 기준을 만들지 않는다", () => {
+    expect(relativeTimeOf("2026-08-18", "08:00", "2026-08-20")).toBeUndefined();
+    expect(relativeTimeOf("2026-08-21", "08:00", "2026-08-20")).toBeUndefined();
+  });
+
+  it("어제는 오늘보다 언제나 앞이다", () => {
+    const 오늘0시 = { day: "today", hour: 0, minute: 0 } as const;
+    const 어제23시59분 = { day: "yesterday", hour: 23, minute: 59 } as const;
+    expect(atOrBefore(어제23시59분, 오늘0시)).toBe(true);
+    expect(atOrBefore(오늘0시, 어제23시59분)).toBe(false);
+  });
+
+  it("같은 시각은 지킨 것으로 본다 — 정각까지가 금식 시작이다", () => {
+    const 기준 = { day: "today", hour: 8, minute: 0 } as const;
+    expect(atOrBefore({ day: "today", hour: 8, minute: 0 }, 기준)).toBe(true);
+    expect(atOrBefore({ day: "today", hour: 7, minute: 59 }, 기준)).toBe(true);
+    expect(atOrBefore({ day: "today", hour: 8, minute: 1 }, 기준)).toBe(false);
+  });
+
+  it("기준 시각이 없으면 되묻기 문구를 만들지 않는다", () => {
+    const [fasting] = buildQuestions(f18FdgPet);
+    expect(fasting.recheck).toBeUndefined();
+    expect(fasting.keptBefore).toBeUndefined();
+  });
+
+  it("문구는 룰셋에서 읽고 금식 시작 시각을 채워 넣는다", () => {
+    const [fasting] = buildQuestions(f18FdgPet, {
+      ...HINTS,
+      fastingStartAt: { day: "today", hour: 2, minute: 0 },
+    });
+    expect(fasting.recheck?.note).toContain("8월 20일(목) 02:00");
+    expect(fasting.recheck?.note).not.toContain("{time}");
+    // 금지 품목이 문구에 그대로 들어간다 — 커피 한 잔도 금식을 깬다
+    expect(fasting.recheck?.hint).toContain("커피");
+    expect(fasting.recheck?.hint).not.toContain("{items}");
   });
 });

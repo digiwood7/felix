@@ -95,14 +95,43 @@ function matches(when: TriageCondition, input: TriageInput): boolean {
      *
      * 마지막 식사 시각으로 답을 뒤집지 않는다. 계산이 "실은 6시간을
      * 넘겼다" 고 말해도 tell 을 ok 로 내리지 않는다. 그 방향의 오류가
-     * 이 서비스에서 가장 위험하다. 대신 **얼마나 모자라는지**로
-     * tell 과 call 을 가른다.
+     * 이 서비스에서 가장 위험하다 — 커피 한 잔으로 금식이 깨졌는지는
+     * 시계가 모르고 환자만 안다. 대신 **얼마나 모자라는지**로
+     * tell 과 call 을 가르고, 그것을 잴 수 없으면 숫자를 말하지 않는다.
+     *
+     * 어긋난 답을 되묻는 것은 문답 화면이 한다 (QuestionFlow).
+     * 여기서 추측하지 않는다.
      */
-    case "fasting.short":
-      return isBroken(answers) && !fastingOverGrace(input);
+    /**
+     * 못 지켰다고 답했는데 **부족분을 말할 수 없는** 상태.
+     *
+     * 시각을 답하지 않았거나(잴 수 없음), 답한 시각이 오히려 기준을
+     * 넘겼거나(모자라지 않음) 둘 중 하나다. 어느 쪽이든 "몇 시간
+     * 부족" 을 카드에 적으면 그건 사실이 아니다 — 어제 저녁이
+     * 마지막이라고 답한 환자에게 "1시간 이내 부족" 이 붙는다.
+     *
+     * 등급은 내리지 않는다. 못 지켰다는 답 자체는 그대로 받는다.
+     */
+    case "fasting.short_unmeasured":
+      return isBroken(answers) && fastingShortfall(input) === null;
 
-    case "fasting.short_over_grace":
-      return isBroken(answers) && fastingOverGrace(input);
+    case "fasting.short": {
+      const short = fastingShortfall(input);
+      return (
+        isBroken(answers) &&
+        short !== null &&
+        !overGrace(short, ruleset.fasting.grace_h)
+      );
+    }
+
+    case "fasting.short_over_grace": {
+      const short = fastingShortfall(input);
+      return (
+        isBroken(answers) &&
+        short !== null &&
+        overGrace(short, ruleset.fasting.grace_h)
+      );
+    }
 
     case "diabetes.after_cutoff":
       return isAfterCutoff(input) && !diabetesOverGrace(input);
@@ -145,11 +174,12 @@ function isAfterCutoff(input: TriageInput): boolean {
  *
  * 답이 없으면 null — 재지 못한 것은 초과로 치지 않는다.
  */
-function fastingOverGrace(input: TriageInput): boolean {
+function fastingShortfall(input: TriageInput): number | null {
   const time = input.answers.fasting?.time;
-  if (!time) return false;
-  const { hours, grace_h } = input.ruleset.fasting;
-  return overGrace(hours * 60 - minutesBefore(input, time), grace_h);
+  if (!time) return null;
+  const short = input.ruleset.fasting.hours * 60 - minutesBefore(input, time);
+  // 0 이하는 "모자라지 않았다" 다. 0 을 돌려주면 부족분 칸에 섞인다
+  return short > 0 ? short : null;
 }
 
 function diabetesOverGrace(input: TriageInput): boolean {
