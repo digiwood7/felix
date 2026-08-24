@@ -11,7 +11,7 @@ import { buildIcs, icsFilename } from "@/lib/ics";
 import { buildQuestions } from "@/lib/questions";
 import { parseReservationParam } from "@/lib/reservationParam";
 import { f18FdgPet } from "@/lib/rules";
-import { buildTimeline } from "@/lib/schedule";
+import { buildTimeline, type Timeline as TimelineData } from "@/lib/schedule";
 import { locationParam, oneParam } from "@/lib/searchParam";
 import { speechBlocks } from "@/lib/speech";
 
@@ -109,9 +109,28 @@ export default async function TimelineScreen({
         href={`/pet/check?t=${t}&b=${b.id}`}
         examDate={examDay.date}
         questionCount={buildQuestions(f18FdgPet).length}
+        fastingStart={fastingStartOf(timeline)}
       />
     </main>
   );
+}
+
+/**
+ * 타임라인에 뜬 금식 시작. CheckCta 가 "아직 답할 때가 아니다" 를 가린다.
+ *
+ * 여기서 다시 계산하지 않고 타임라인이 이미 그린 값을 그대로 넘긴다 —
+ * 화면에 뜬 숫자와 문구의 숫자가 갈리면 환자는 어느 쪽이 맞는지 모른다.
+ */
+function fastingStartOf(
+  timeline: TimelineData,
+): { date: string; time: string } | undefined {
+  for (const day of timeline) {
+    for (const item of day.items) {
+      if (item.kind === "fasting" && item.time) {
+        return { date: day.date, time: item.time };
+      }
+    }
+  }
 }
 
 /** "2026-08-06", "목", 8, 25 → "8월 6일(목) 08:25" */

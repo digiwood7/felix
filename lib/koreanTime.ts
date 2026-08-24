@@ -63,6 +63,25 @@ export function hourInKST(now: number = Date.now()): number {
 }
 
 /**
+ * 지금(KST)이 그 날짜 · 시각보다 이른가.
+ *
+ * `todayInKST` 와 같은 규칙이다 — **계산 경로에서 쓰지 않는다.**
+ * 기기 시계가 틀려도 타임라인의 시각은 흔들리지 않고, 이 값은
+ * 화면을 다르게 보여주는 데만 쓴다.
+ *
+ * ISO 문자열을 분 단위까지 잘라 사전순으로 비교한다. 두 값 모두
+ * 0으로 채워진 같은 형식이므로 사전순 비교가 곧 시각 비교가 된다.
+ */
+export function isBeforeInKST(
+  date: string,
+  time: string,
+  now: number = Date.now(),
+): boolean {
+  const nowKST = new Date(now + KST_OFFSET_MS).toISOString().slice(0, 16);
+  return nowKST < `${date}T${time}`;
+}
+
+/**
  * KST 기준으로 오늘부터 그 날짜까지 며칠 남았는지.
  * 오늘이면 0, 내일이면 1, 어제면 -1.
  */

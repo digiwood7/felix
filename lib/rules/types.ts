@@ -289,6 +289,14 @@ export interface CheckCopy {
   note: string;
   /** `{count}` 자리에 문항 수가 들어간다. 숫자를 문구에 박아 두지 않는다 */
   note_today: string;
+  /**
+   * 검사 당일이지만 **금식이 아직 시작되지 않았을 때.**
+   *
+   * `{time}` 자리에 금식 시작 시각이 들어간다. 이 상태에서 금식 시작은
+   * 반드시 당일이다 — 전날이었다면 이미 지났고, 전날에 열었다면
+   * `note` 쪽으로 떨어진다.
+   */
+  note_early: string;
   /** 지난번 키 · 몸무게를 불러왔을 때 */
   restored: string;
   restored_action: string;
