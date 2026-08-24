@@ -472,134 +472,27 @@ v1에서는 대시보드를 만들지 않는다. 도달률 20% 수준에서는 �
 
 검사 확장은 이 파일을 복사하는 것으로 끝난다. 코드는 수정하지 않는다.
 
-```json
-{
-  "id": "f18-fdg-pet",
-  "label": "PET/CT (F-18 FDG)",
-  "timezone": "Asia/Seoul",
-  "duration_min": 80,
+**원본은 `lib/rules/f18-fdg-pet.json` 하나뿐이다.** 값은 `lib/rules/rules.test.ts` 가 런타임으로 고정하고, 구조는 `lib/rules/types.ts` 가 타입으로 고정한다. **이 문서에 사본을 두지 않는다** — 아래 표는 어느 블록이 무엇을 지배하는지를 적은 것이고, 실제 값이 필요하면 파일을 연다.
 
-  "intro": "검사를 위한 주의사항을 날짜와 시간별로 알려드리겠습니다",
-
-  "labels": {
-    "restriction": "주의",
-    "fasting": "금식",
-    "conditional": "복약",
-    "arrival": "도착",
-    "exam": "검사"
-  },
-
-  "locations": {
-    "ask": "어느 건물에서 검사받으시나요?",
-    "hint": "예약 안내문이나 예약 문자에 적혀 있습니다",
-    "fallback_text": "지하 1층 핵의학과",
-    "options": [
-      { "id": "main", "label": "본관 지하1층", "text": "본관 지하 1층 핵의학과" },
-      {
-        "id": "cancer",
-        "label": "암병원 지하1층",
-        "text": "암병원 지하 1층 핵의학과"
-      }
-    ]
-  },
-
-  "arrival": {
-    "before_min": 20,
-    "round": "floor_10min",
-    "text": "{location} 도착",
-    "notes": [
-      "접수 시 혈당을 측정합니다",
-      "혈당이 200을 넘으면 검사 일정을 다시 잡습니다"
-    ]
-  },
-
-  "exam": {
-    "text": "검사 시작 — 약 {duration} 소요"
-  },
-
-  "fasting": {
-    "hours": 6,
-    "round": "floor_hour",
-    "text": "이 시각 이후 아무것도 드시지 마세요",
-    "note": "전날 저녁 식사 이후로 하시면 편합니다",
-    "note_if_between": ["00:00", "06:00"],
-    "allowed": ["물(생수)"],
-    "allowed_text": "{items}만 가능합니다",
-    "allowed_note": "단, 같은 날 다른 검사가 있으면 반드시 확인 후 생수를 드시기 바랍니다",
-    "forbidden": ["보리차", "커피", "우유", "주스", "껌", "사탕"],
-    "forbidden_text": "{items}도 안 됩니다"
-  },
-
-  "conditional": [
-    {
-      "id": "diabetes",
-      "ask": "당뇨약이나 인슐린을 사용하시나요?",
-      "offset_h": -4,
-      "round": "floor_hour",
-      "text": "당뇨약 · 인슐린을 쓰신다면 이 시각까지만 사용 가능합니다",
-      "after_text": "이후에 사용하셨다면 접수처에 꼭 말씀해 주세요"
-    }
-  ],
-
-  "restrictions": [
-    {
-      "id": "exercise",
-      "from": "prev_day_start",
-      "display": "all_day",
-      "text": "등산 · 헬스 · 골프 등 과격한 운동을 하지 마세요"
-    }
-  ],
-
-  "intake_categories": [
-    { "id": "beverage_caffeine", "label": "커피 · 차" },
-    { "id": "beverage_sugar", "label": "주스 · 음료" },
-    { "id": "dairy", "label": "우유 · 유제품" },
-    { "id": "candy_gum", "label": "사탕 · 껌" },
-    { "id": "intake_other", "label": "그 외" }
-  ],
-
-  "medication_categories": [
-    { "id": "med_bp", "label": "혈압약" },
-    { "id": "med_diabetes", "label": "당뇨약 · 인슐린" },
-    { "id": "med_thyroid", "label": "갑상선약" },
-    { "id": "med_other", "label": "그 외" }
-  ],
-
-  "flags": [
-    { "id": "weight", "q": "체중이 150kg을 넘으시나요?", "level": "call" },
-    { "id": "claustro", "q": "폐쇄공포증이 있으신가요?", "level": "call" },
-    {
-      "id": "pregnancy",
-      "q": "임신 가능성이 있거나 수유 중이신가요?",
-      "level": "call"
-    }
-  ],
-
-  "triage": [
-    {
-      "when": "fasting.broken",
-      "level": "tell",
-      "label": "금식 시작 이후 음식 섭취"
-    },
-    { "when": "intake.non_water", "level": "tell", "label": "물 외 섭취" },
-    { "when": "medication.taken", "level": "tell", "label": "당일 복약" },
-    {
-      "when": "diabetes.after_cutoff",
-      "level": "call",
-      "label": "당뇨약 마지노선 이후 사용"
-    },
-    { "when": "exercise.yes", "level": "tell", "label": "전날 과격한 운동" }
-  ],
-
-  "levels": {
-    "ok": "접수처에 추가로 말씀하실 내용이 없습니다",
-    "tell": "접수하실 때 이 화면을 보여주세요",
-    "call": "출발 전에 1599-3114로 먼저 전화해 주세요"
-  }
-}
-```
+| 키 | 지배하는 것 | 관련 |
+|---|---|---|
+| `id` · `label` · `timezone` · `duration_min` | 검사 식별과 소요시간. `timezone` 은 모든 계산의 유일한 기준 | §9.2 |
+| `intro` · `labels` | 화면 머리말과 타임라인 항목 이름 | §8 F1 |
+| `locations` | 건물 선택지. **접수처 연락처가 건물마다 다르다** (`options[].phone`) | §8 F1 |
+| `arrival` | 도착 시각(`before_min` · `round`)과 도착 시 사실 안내(`notes`) | §9.2 |
+| `exam` | 검사 시작 항목. `speech_text` 는 읽어주기 전용 문구다 | §8 F3 |
+| `fasting` | 금식 `hours` · `grace_h` · `round` + 허용 · 금지 품목 문구 | §9.4 |
+| `conditional` | 당뇨약 마지노선 `offset_h` · `grace_h` | §9.4 |
+| `restrictions` | 운동 제한. `from: prev_day_start` · `display: all_day` | §8 F1 |
+| `questions` | 문답 4문항의 묻는 말과 선택지. **자유 입력이 없으므로 선택지는 전부 여기서 읽는다** | §8 F2 |
+| `check` · `actions` · `card` | S2→S3 진입 · 전달 버튼 · 요약카드의 모든 문구 | §8 F2 · F3 |
+| `flags` | 환자가 스스로 아는 사실 3종과 등급 | §9.4 |
+| `triage` | 시각 · 수치에서 도출되는 조건 5종과 등급 | §9.4 |
+| `levels` | 배지 문구 3종. **행동 지시이지 판정문이 아니다** | §9.3 |
 
 이 파일 안에 "검사 가능" / "검사 불가"라는 단어가 한 번도 등장하지 않는 것에 유의한다. 이것이 승인의 열쇠다.
+
+> **v1.2 시점의 JSON 전문이 여기 실려 있었다 (2026-08-24 제거).** 문답이 5개에서 4개로 바뀌고(T6·T8), 연락처가 건물별로 갈리고(`f51bd10`), 체중이 `flags` 의 질문에서 숫자 입력 + `weight.over_limit` 으로 옮겨 가는 동안 **사본만 v1.2 에 멈춰 있었다.** 그 상태에서 `WORKFLOW.md` T2 의 DoD 가 "JSON 이 §9.1 과 한 글자도 다르지 않다" 였다 — 그대로 따르면 룰셋이 통째로 되돌아간다. 사본을 두지 않는 것이 유일한 대응이다.
 
 **v1.0 대비 변경점**
 
