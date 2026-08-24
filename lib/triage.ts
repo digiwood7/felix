@@ -133,11 +133,36 @@ function matches(when: TriageCondition, input: TriageInput): boolean {
       );
     }
 
-    case "diabetes.after_cutoff":
-      return isAfterCutoff(input) && !diabetesOverGrace(input);
+    /**
+     * 쓴다고 했는데 **얼마나 늦었는지 말할 수 없는** 상태.
+     *
+     * 시각을 답하지 않았거나, 표시된 마지노선은 넘겼지만 예약 기준
+     * 4시간은 지킨 구간이다. 어느 쪽이든 "1시간 이내 초과" 는
+     * 사실이 아니다. 등급은 내리지 않는다 — 화면이 안내한 시각을
+     * 넘긴 것은 맞고, 시각을 모르는 것은 접수에서 물을 일이다.
+     */
+    case "diabetes.used_unmeasured":
+      return isDiabetesFlagged(input) && diabetesExcess(input) === null;
 
-    case "diabetes.after_cutoff_over_grace":
-      return isAfterCutoff(input) && diabetesOverGrace(input);
+    case "diabetes.after_cutoff": {
+      const excess = diabetesExcess(input);
+      const rule = ruleset.conditional.find((c) => c.id === "diabetes");
+      return (
+        isDiabetesFlagged(input) &&
+        excess !== null &&
+        !overGrace(excess, rule?.grace_h)
+      );
+    }
+
+    case "diabetes.after_cutoff_over_grace": {
+      const excess = diabetesExcess(input);
+      const rule = ruleset.conditional.find((c) => c.id === "diabetes");
+      return (
+        isDiabetesFlagged(input) &&
+        excess !== null &&
+        overGrace(excess, rule?.grace_h)
+      );
+    }
 
     case "weight.over_limit": {
       const limit = ruleset.questions.body.weight.limit;
@@ -152,16 +177,44 @@ function isBroken(answers: TriageInput["answers"]): boolean {
   return answers.fasting?.kept === false;
 }
 
-function isAfterCutoff(input: TriageInput): boolean {
+/**
+ * 당뇨약을 접수에서 물어야 하는가.
+ *
+ * **화면에 안내한 마지노선을 넘겼는가로 가른다.** 환자가 읽은 것은
+ * 내림된 표시값(`13:00`)이고, 실무가 요구한 것도 그 시각까지다.
+ * 예약에서 다시 재면 화면이 시킨 것과 판정이 갈린다.
+ *
+ * 시각을 답하지 않았으면 걸러 둔다. "쓴다" 고 했는데 언제 썼는지
+ * 모르는 것은 접수에서 물어야 할 일이지 넘어갈 일이 아니다.
+ */
+function isDiabetesFlagged(input: TriageInput): boolean {
   const { answers } = input;
   if (answers.diabetes?.uses !== true) return false;
-  const used = answers.diabetes.time;
-  if (!used) return false;
+
   const cutoff = stampOf(input.timeline, "diabetes");
   // 마지노선을 못 구하면 판정하지 않는다. 없는 기준으로 배지를 올리면
   // 전화가 걸려 오고, 그것이 줄이려던 바로 그 업무다
   if (!cutoff) return false;
+
+  const used = answers.diabetes.time;
+  if (!used) return true;
   return stampOfAnswer(input.reservation, used) > cutoff;
+}
+
+/**
+ * 마지노선을 얼마나 넘겼는지(분). 잴 수 없거나 넘기지 않았으면 null.
+ *
+ * 걸러 낸 이유(표시값 초과)와 재는 자[尺](예약 시각)가 다르다. 표시값이
+ * 최대 59분 이르게 잡혀 있어서, **표시값은 넘겼지만 예약 기준으로는
+ * 4시간을 지킨** 구간이 생긴다 — 17:30 예약의 13:20 사용이 그렇다.
+ * 그 구간에 "1시간 이내 초과" 를 적으면 사실이 아니므로 null 로 뺀다.
+ */
+function diabetesExcess(input: TriageInput): number | null {
+  const time = input.answers.diabetes?.time;
+  const rule = input.ruleset.conditional.find((c) => c.id === "diabetes");
+  if (!time || !rule) return null;
+  const excess = Math.abs(rule.offset_h) * 60 - minutesBefore(input, time);
+  return excess > 0 ? excess : null;
 }
 
 /**
@@ -180,16 +233,6 @@ function fastingShortfall(input: TriageInput): number | null {
   const short = input.ruleset.fasting.hours * 60 - minutesBefore(input, time);
   // 0 이하는 "모자라지 않았다" 다. 0 을 돌려주면 부족분 칸에 섞인다
   return short > 0 ? short : null;
-}
-
-function diabetesOverGrace(input: TriageInput): boolean {
-  const time = input.answers.diabetes?.time;
-  const rule = input.ruleset.conditional.find((c) => c.id === "diabetes");
-  if (!time || !rule) return false;
-  return overGrace(
-    Math.abs(rule.offset_h) * 60 - minutesBefore(input, time),
-    rule.grace_h,
-  );
 }
 
 /**

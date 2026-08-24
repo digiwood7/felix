@@ -221,6 +221,83 @@ describe("배지 — tell", () => {
     ]);
   });
 
+  /**
+   * 당뇨약도 같은 규칙이다 — 걸러 낸 이유와 재는 자가 다르다.
+   *
+   * 걸러 내는 기준은 **화면에 안내한 마지노선**(내림된 10:00)이고,
+   * 얼마나 늦었는지는 **예약 시각**에서 잰다 (실무 기준이 "몇 시간
+   * 전이냐" 이므로). 그래서 표시값은 넘겼지만 4시간은 지킨 구간이
+   * 생긴다. 그 구간에 "1시간 이내 초과" 를 적으면 사실이 아니다.
+   */
+  it("표시된 마지노선은 넘겼지만 4시간을 지켰으면 초과분을 말하지 않는다", () => {
+    const v = verdictOf({
+      ...CLEAN,
+      // 마지노선 표시는 10:00, 예약 기준 4시간 지점은 10:25.
+      // 10:10 은 표시값은 넘겼지만 예약 기준으로는 4시간 15분 전이다
+      diabetes: { uses: true, time: { day: "today", hour: 10, minute: 10 } },
+    });
+    expect(v.level).toBe("tell");
+    expect(v.reasons.map((r) => r.label)).toEqual(["당뇨약 사용 시각 확인 필요"]);
+  });
+
+  it("예약 기준 4시간 정각도 초과분이 0 이므로 숫자를 말하지 않는다", () => {
+    const v = verdictOf({
+      ...CLEAN,
+      diabetes: { uses: true, time: { day: "today", hour: 10, minute: 25 } },
+    });
+    expect(v.level).toBe("tell");
+    expect(v.reasons.map((r) => r.label)).toEqual(["당뇨약 사용 시각 확인 필요"]);
+  });
+
+  it("1분이라도 늦으면 초과분을 말한다", () => {
+    const v = verdictOf({
+      ...CLEAN,
+      diabetes: { uses: true, time: { day: "today", hour: 10, minute: 26 } },
+    });
+    expect(v.level).toBe("tell");
+    expect(v.reasons.map((r) => r.label)).toEqual([
+      "당뇨약 마지노선 초과 (1시간 이내)",
+    ]);
+  });
+
+  /**
+   * **쓴다고 했는데 시각을 모르면 넘기지 않는다.**
+   *
+   * 화면은 시각을 답해야 다음으로 보내지만, 주소가 잘려 오면 이 상태로
+   * 카드가 열린다. 그때 🟢 를 띄우면 "당뇨약 쓰신다" 는 답을 받아 두고
+   * 아무 말도 하지 않는 카드가 된다 — 금식 쪽과 방향이 반대가 된다.
+   */
+  it("당뇨약을 쓴다고 했는데 시각을 답하지 않으면 tell", () => {
+    const v = verdictOf({
+      ...CLEAN,
+      diabetes: { uses: true, time: null },
+    });
+    expect(v.level).toBe("tell");
+    expect(v.reasons.map((r) => r.label)).toEqual(["당뇨약 사용 시각 확인 필요"]);
+  });
+
+  it("마지노선 정각까지는 아무 말도 하지 않는다", () => {
+    const v = verdictOf({
+      ...CLEAN,
+      diabetes: { uses: true, time: { day: "today", hour: 10, minute: 0 } },
+    });
+    expect(v.level).toBe("ok");
+    expect(v.reasons).toEqual([]);
+  });
+
+  it("당뇨약 세 갈래도 서로 겹치지 않는다", () => {
+    for (const time of [
+      null,
+      { day: "today", hour: 10, minute: 10 } as const,
+      { day: "today", hour: 10, minute: 26 } as const,
+      { day: "today", hour: 11, minute: 25 } as const,
+      { day: "today", hour: 12, minute: 25 } as const,
+    ]) {
+      const v = verdictOf({ ...CLEAN, diabetes: { uses: true, time } });
+      expect(v.reasons).toHaveLength(1);
+    }
+  });
+
   it("세 갈래는 서로 겹치지 않는다 — 사유는 언제나 한 줄이다", () => {
     for (const time of [
       null,

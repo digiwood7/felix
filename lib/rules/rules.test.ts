@@ -10,6 +10,7 @@ const TRIAGE_CONDITIONS: TriageCondition[] = [
   "fasting.short_unmeasured",
   "fasting.short",
   "fasting.short_over_grace",
+  "diabetes.used_unmeasured",
   "diabetes.after_cutoff",
   "diabetes.after_cutoff_over_grace",
   "weight.over_limit",
