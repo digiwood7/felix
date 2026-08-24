@@ -5,6 +5,7 @@ import {
   NONE_ID,
   atOrBefore,
   buildQuestions,
+  deadlineBefore,
   emptyAnswers,
   isAnswered,
   relativeTimeOf,
@@ -283,15 +284,95 @@ describe("금식 되묻기 기준", () => {
     expect(fasting.keptBefore).toBeUndefined();
   });
 
-  it("문구는 룰셋에서 읽고 금식 시작 시각을 채워 넣는다", () => {
+  /**
+   * 되묻기 문구에 들어가는 것은 **판정선**이지 내림된 표시값이 아니다.
+   * 표시값(02:00)과 판정선(02:25)이 어긋나는 예약을 일부러 골랐다.
+   */
+  it("문구는 룰셋에서 읽고 판정선을 채워 넣는다", () => {
     const [fasting] = buildQuestions(f18FdgPet, {
       ...HINTS,
-      fastingStartAt: { day: "today", hour: 2, minute: 0 },
+      fastingKeptAt: { day: "today", hour: 2, minute: 25 },
+      fastingKeptLabel: "8월 20일(목) 02:25",
     });
-    expect(fasting.recheck?.note).toContain("8월 20일(목) 02:00");
+    expect(fasting.recheck?.note).toContain("8월 20일(목) 02:25");
     expect(fasting.recheck?.note).not.toContain("{time}");
     // 금지 품목이 문구에 그대로 들어간다 — 커피 한 잔도 금식을 깬다
     expect(fasting.recheck?.hint).toContain("커피");
     expect(fasting.recheck?.hint).not.toContain("{items}");
+  });
+});
+
+/**
+ * 판정선 — 되묻기와 배지가 같이 쓰는 자[尺] (PRD §9.4).
+ *
+ * **여기서 내림이 일어나면 안 된다.** 내림된 값으로 되물으면 표시값과
+ * 판정선 사이 구간에서 되묻기가 뜨지 않아, 6시간을 지킨 환자가 🟡 에
+ * 갇힌 채 빠져나올 길이 없어진다.
+ */
+describe("판정선 — deadlineBefore", () => {
+  it("분을 버리지 않는다 — 17:30 예약의 6시간 전은 11:30 이다", () => {
+    const d = deadlineBefore(
+      { year: 2026, month: 8, day: 20, hour: 17, minute: 30 },
+      6,
+    );
+    expect(d?.at).toEqual({ day: "today", hour: 11, minute: 30 });
+    expect(d?.date).toBe("2026-08-20");
+  });
+
+  it("정시 예약이면 표시값과 같아진다 — 내림이 일어나지 않는 예약이다", () => {
+    expect(
+      deadlineBefore({ year: 2026, month: 8, day: 20, hour: 17, minute: 0 }, 6)
+        ?.at,
+    ).toEqual({ day: "today", hour: 11, minute: 0 });
+  });
+
+  it("자정을 넘기면 어제가 된다", () => {
+    const d = deadlineBefore(
+      { year: 2026, month: 8, day: 20, hour: 5, minute: 25 },
+      6,
+    );
+    expect(d?.at).toEqual({ day: "yesterday", hour: 23, minute: 25 });
+    expect(d?.date).toBe("2026-08-19");
+  });
+
+  it("월 · 연 경계를 넘겨도 날짜가 맞다", () => {
+    expect(
+      deadlineBefore({ year: 2027, month: 1, day: 1, hour: 3, minute: 0 }, 6)
+        ?.date,
+    ).toBe("2026-12-31");
+  });
+
+  it("윤년 2월 29일로 넘어간다", () => {
+    expect(
+      deadlineBefore({ year: 2028, month: 3, day: 1, hour: 2, minute: 0 }, 6)
+        ?.date,
+    ).toBe("2028-02-29");
+  });
+
+  // 어제보다 더 거슬러 올라가면 문답의 어제/오늘로 표현할 수 없다.
+  // 되묻기를 띄우지 않는 쪽으로 떨어뜨린다
+  it("전전날로 넘어가면 undefined", () => {
+    expect(
+      deadlineBefore({ year: 2026, month: 8, day: 20, hour: 5, minute: 0 }, 30),
+    ).toBeUndefined();
+  });
+
+  it("되묻기 기준과 배지 기준이 같은 지점을 가리킨다", () => {
+    // 예약 17:30 · 금식 6시간 → 판정선 11:30.
+    // 11:30 은 지킨 것(되묻기 대상), 11:31 은 부족(되묻지 않음)
+    const 판정선 = deadlineBefore(
+      { year: 2026, month: 8, day: 20, hour: 17, minute: 30 },
+      f18FdgPet.fasting.hours,
+    )!.at;
+    expect(atOrBefore({ day: "today", hour: 11, minute: 30 }, 판정선)).toBe(
+      true,
+    );
+    expect(atOrBefore({ day: "today", hour: 11, minute: 31 }, 판정선)).toBe(
+      false,
+    );
+    // 내림값(11:00)으로 재던 시절에 갇히던 구간이다
+    expect(atOrBefore({ day: "today", hour: 11, minute: 20 }, 판정선)).toBe(
+      true,
+    );
   });
 });

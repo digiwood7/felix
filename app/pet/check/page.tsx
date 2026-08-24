@@ -5,11 +5,11 @@ import QuestionFlow from "@/components/QuestionFlow";
 import { parseReservationParam } from "@/lib/reservationParam";
 import {
   buildQuestions,
-  relativeTimeOf,
+  deadlineBefore,
   type ScheduleHints,
 } from "@/lib/questions";
 import { f18FdgPet } from "@/lib/rules";
-import { buildTimeline, type Timeline } from "@/lib/schedule";
+import { buildTimeline, type Reservation, type Timeline } from "@/lib/schedule";
 import { locationParam, oneParam } from "@/lib/searchParam";
 
 /**
@@ -47,7 +47,10 @@ export default async function CheckScreen({
 
       <QuestionFlow
         ruleset={f18FdgPet}
-        questions={buildQuestions(f18FdgPet, hintsOf(timeline))}
+        questions={buildQuestions(
+          f18FdgPet,
+          hintsOf(f18FdgPet, reservation, timeline),
+        )}
         backHref={backHref}
         restoredCopy={f18FdgPet.check}
       />
@@ -56,14 +59,21 @@ export default async function CheckScreen({
 }
 
 /**
- * 타임라인에서 문답에 붙일 시각을 뽑는다.
+ * 문답에 붙일 시각을 뽑는다. **두 종류가 섞여 있으므로 출처가 다르다.**
  *
- * 시각을 여기서 다시 계산하지 않는다. S2 에 표시된 값과 한 글자라도
- * 달라지면 환자는 어느 쪽이 맞는지 알 수 없다.
+ * - 안내 문구에 넣는 시각(`fastingStart` · `diabetesCutoff`)은
+ *   **타임라인에서** 가져온다. 여기서 다시 계산하면 S2 에 표시된 값과
+ *   한 글자라도 달라질 수 있고, 그러면 환자는 어느 쪽이 맞는지 모른다.
+ * - 되묻기를 띄우는 기준(`fastingKeptAt`)은 **예약에서** 정확히 잰다.
+ *   타임라인 값은 내림돼 있어 판정선보다 최대 59분 이르다. 그것으로
+ *   되물으면 6시간을 지킨 환자가 되묻기를 못 받는다 (PRD §9.4).
  */
-function hintsOf(timeline: Timeline): ScheduleHints {
+function hintsOf(
+  ruleset: typeof f18FdgPet,
+  reservation: Reservation,
+  timeline: Timeline,
+): ScheduleHints {
   const hints: ScheduleHints = {};
-  const examDate = timeline[timeline.length - 1].date;
 
   for (const day of timeline) {
     for (const item of day.items) {
@@ -71,12 +81,22 @@ function hintsOf(timeline: Timeline): ScheduleHints {
       const label = `${labelOf(day.date, day.weekday)} ${item.time}`;
       if (item.kind === "fasting" && !hints.fastingStart) {
         hints.fastingStart = label;
-        hints.fastingStartAt = relativeTimeOf(day.date, item.time, examDate);
       }
       if (item.kind === "conditional" && !hints.diabetesCutoff) {
         hints.diabetesCutoff = label;
       }
     }
+  }
+
+  const kept = deadlineBefore(reservation, ruleset.fasting.hours);
+  // 요일은 타임라인이 이미 구해 두었다. 여기서 다시 요일을 계산하지 않는다
+  const keptDay = kept && timeline.find((d) => d.date === kept.date);
+  if (kept && keptDay) {
+    const pad = (n: number) => String(n).padStart(2, "0");
+    hints.fastingKeptAt = kept.at;
+    hints.fastingKeptLabel = `${labelOf(keptDay.date, keptDay.weekday)} ${pad(
+      kept.at.hour,
+    )}:${pad(kept.at.minute)}`;
   }
 
   return hints;

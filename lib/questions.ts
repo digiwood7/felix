@@ -1,4 +1,5 @@
 import type { ExamRuleset, NumberField, TimeCopy } from "./rules/types";
+import type { Reservation } from "./schedule";
 
 /**
  * 상태 문답 정의 — PRD §8 F2
@@ -56,6 +57,9 @@ export interface Question {
    *
    * "아니요" 와 어긋나는 시각을 골랐을 때 되묻기를 띄우는 기준.
    * 없으면 되묻지 않는다.
+   *
+   * **배지 판정선과 같은 값이어야 한다** — 내림된 표시값을 넣지 않는다.
+   * `ScheduleHints.fastingKeptAt` 참고.
    */
   keptBefore?: TimeAnswer;
   recheck?: {
@@ -91,12 +95,72 @@ export interface ScheduleHints {
   /** 당뇨약 · 인슐린 마지노선 */
   diabetesCutoff?: string;
   /**
-   * 금식 시작을 문답의 어제/오늘 + 시각으로 옮긴 값.
+   * 금식을 지킨 것이 되는 마지막 시각 — **판정선이다.**
    *
-   * 화면에 뜨는 `fastingStart` 와 **같은 항목에서 나온다.** 다시 계산하면
-   * 환자가 읽은 시각과 비교 기준이 갈릴 수 있다.
+   * `fastingStart`(내림된 표시값)가 아니다. 되묻기는 "환자가 답한 시각으로
+   * 보면 실은 지킨 것 아닌가" 를 묻는 것이므로, **배지가 쓰는 자[尺]와
+   * 같은 자로 재야 한다.** 내림값으로 재면 표시값과 판정선 사이(17:30
+   * 예약의 11:01~11:30)에서 되묻기가 뜨지 않아, 6시간을 지킨 환자가
+   * 🟡 에 갇힌 채 빠져나올 길이 없어진다 (PRD §9.4).
    */
-  fastingStartAt?: TimeAnswer;
+  fastingKeptAt?: TimeAnswer;
+  /** 위 판정선의 표기 — "8월 20일(목) 02:25". 되묻기 문구에 들어간다 */
+  fastingKeptLabel?: string;
+}
+
+/** 판정선 한 지점 */
+export interface Deadline {
+  /** 문답의 어제/오늘 + 시각 */
+  at: TimeAnswer;
+  /** "YYYY-MM-DD". 요일을 붙일 때 타임라인에서 그 날을 찾는 데 쓴다 */
+  date: string;
+}
+
+/**
+ * 예약 시각에서 기준 시간을 **정확히** 뺀 지점 (PRD §9.4).
+ *
+ * **내림하지 않는다.** 내림은 환자에게 안내하는 시각에만 쓴다.
+ * 이 값은 판정과 되묻기가 같이 쓰는 자[尺]이므로, 여기서 한 번만
+ * 계산하고 양쪽이 그것을 읽는다 — 자가 둘로 갈리면 그 사이에
+ * 규칙을 지킨 환자가 낀다.
+ *
+ * 예약일 당일과 전날만 돌려준다. 그 밖이면 undefined — 되묻기를
+ * 띄우지 않는 쪽으로 떨어진다 (`relativeTimeOf` 와 같은 규칙).
+ *
+ * Date.UTC / getUTC* 만 쓴다. 기기 타임존이 무엇이든 결과가 같다 (PRD §9.2).
+ */
+export function deadlineBefore(
+  reservation: Reservation,
+  hours: number,
+): Deadline | undefined {
+  const at = new Date(
+    Date.UTC(
+      reservation.year,
+      reservation.month - 1,
+      reservation.day,
+      reservation.hour,
+      reservation.minute,
+    ) -
+      hours * 3_600_000,
+  );
+
+  const diff =
+    (Date.UTC(reservation.year, reservation.month - 1, reservation.day) -
+      Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate())) /
+    86_400_000;
+
+  if (diff !== 0 && diff !== 1) return undefined;
+
+  const pad = (n: number) => String(n).padStart(2, "0");
+
+  return {
+    at: {
+      day: diff === 0 ? "today" : "yesterday",
+      hour: at.getUTCHours(),
+      minute: at.getUTCMinutes(),
+    },
+    date: `${at.getUTCFullYear()}-${pad(at.getUTCMonth() + 1)}-${pad(at.getUTCDate())}`,
+  };
 }
 
 /**
@@ -154,11 +218,14 @@ export function buildQuestions(
       noLabel: q.fasting.no_label,
       timeTitle: q.fasting.time_ask,
       time: q.time,
-      keptBefore: hints.fastingStartAt,
-      // 되묻기는 기준 시각이 있을 때만 성립한다
-      recheck: hints.fastingStartAt && hints.fastingStart
+      keptBefore: hints.fastingKeptAt,
+      // 되묻기는 판정선이 있을 때만 성립한다
+      recheck: hints.fastingKeptAt && hints.fastingKeptLabel
         ? {
-            note: q.fasting.recheck_note.replace("{time}", hints.fastingStart),
+            note: q.fasting.recheck_note.replace(
+              "{time}",
+              hints.fastingKeptLabel,
+            ),
             ask: q.fasting.recheck_ask,
             hint: itemsLine(q.fasting.recheck_hint, ruleset.fasting.forbidden),
             yesLabel: q.fasting.recheck_yes,
