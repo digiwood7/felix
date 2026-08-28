@@ -146,8 +146,8 @@
   },
 
   "actions": {
-    "speak": "읽어주기",
-    "speak_stop": "그만 읽기",
+    "speak": "음성으로 듣기",
+    "speak_stop": "그만 듣기",
     "calendar": "잊지 않게 알림 받기",
     "calendar_file": "pet-checkup",
     "share": "가족에게 보내기",
