@@ -83,14 +83,26 @@ export default async function TimelineScreen({
         {f18FdgPet.intro}
       </p>
 
-      {/* 전달 기능 — 목록 위에 둔다 (PRD §8 F3).
-          듣고 싶은 사람은 읽기 전에 눌러야 하고, 보호자는 화면을 다 읽기
-          전에 보내는 경우가 많다. 아래에 두면 스크롤 끝까지 가야 만난다 */}
-      <div className="mb-6 flex gap-2">
+      {/* 듣기만 목록 위에 남긴다 (PRD §8 F3).
+          이건 **읽기를 대신하는 것**이라 읽기 전에 손에 닿아야 한다.
+          목록 아래로 내리면 다 읽은 사람만 만나게 되어 쓸 일이 없어진다 */}
+      <div className="mb-6 flex">
         <SpeakButton
           blocks={speechBlocks(f18FdgPet, timeline)}
           copy={f18FdgPet.actions}
         />
+      </div>
+
+      <Timeline timeline={timeline} ruleset={f18FdgPet} />
+
+      {/* 알림 · 보내기는 목록 아래로 내린다.
+          듣기와 달리 이 둘은 **다 읽고 나서 하는 행동**이다 — 무슨 일정인지
+          알아야 캘린더에 넣을 마음이 들고, 내용을 봐야 누구에게 보낼지 안다.
+          위에 있으면 읽기도 전에 지나쳐 세 개가 한 덩어리로 흘러간다.
+
+          문답 진입(CheckCta) 바로 위에 둔다. 목록을 다 읽은 사람이 마지막에
+          만나는 자리가 여기고, "챙겨 두기 → 답하기" 로 순서가 이어진다 */}
+      <div className="mt-6 mb-6 flex gap-2">
         <CalendarButton
           ics={buildIcs(f18FdgPet, timeline)}
           filename={icsFilename(f18FdgPet, reservation)}
@@ -98,8 +110,6 @@ export default async function TimelineScreen({
         />
         <ShareButton copy={f18FdgPet.actions} />
       </div>
-
-      <Timeline timeline={timeline} ruleset={f18FdgPet} />
 
       {/* S3 진입은 강제하지 않는다. 타임라인만 보고 나가도 목적의 절반은
           달성된 것이다 (PRD §10). 그래서 링크는 목록 아래에 둔다.
