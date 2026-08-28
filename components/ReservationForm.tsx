@@ -173,7 +173,7 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
        * 보인다.** 그 경우가 오히려 흔하다 — 세 단계가 한 화면에 다 들어가는
        * 기기가 많다. 그래서 움직임이 아니라 표시가 신호를 맡는다.
        *
-       * 깜박임은 0.7초 × 3 = 2.1초 (`app/globals.css` 의 `.pet-flash`).
+       * 깜박임은 1초 × 3 = 3초 (`app/globals.css` 의 `.pet-flash`).
        *
        * 끄는 시각은 **넉넉하게** 잡는다. 이 타이머는 지금 세지만
        * 애니메이션은 React 가 요소를 붙이고 브라우저가 그린 뒤에 시작해서,
@@ -182,7 +182,7 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
        */
       if (flashTimer.current) clearTimeout(flashTimer.current);
       setFlashRun((n) => n + 1);
-      flashTimer.current = setTimeout(() => setFlashRun(0), 3200);
+      flashTimer.current = setTimeout(() => setFlashRun(0), 4200);
       return;
     }
     setPending({
@@ -593,12 +593,21 @@ function Section({
           여백을 주면 뜰 때마다 높이가 변해 아래 것들이 밀린다 — 데려다
           놓고 화면을 흔드는 셈이라 오히려 자리를 잃는다.
           겹침 요소는 자리를 안 먹고, 투명도만 깜박이면 되므로 다시 그리는
-          비용도 없다 */}
+          비용도 없다.
+
+          색이 파랑인 이유는 두 가지다.
+          하나, amber-500 은 흰 배경 대비 **2.15:1** 이라 비텍스트 최소치
+          3:1 에 못 미쳤다 (WCAG 1.4.11). 안 보이는 것이 정상이었다.
+          blue-600 은 5.17:1 이다.
+          둘, 이 서비스에서 빨강은 "출발 전 전화하세요"(call), 주황은
+          "주의", 자주는 "금식" 이다. **빠진 칸은 위험이 아니라 안내다** —
+          가장 무거운 신호의 색을 여기에 쓰면 그 신호가 값싸진다.
+          파랑은 아직 아무 뜻도 맡지 않은 유일한 고대비 색이다 */}
       {flash && (
         <span
           key={flashRun}
           aria-hidden="true"
-          className="pet-flash pointer-events-none absolute -inset-3 rounded-2xl border-4 border-amber-500"
+          className="pet-flash pointer-events-none absolute -inset-3 rounded-2xl border-4 border-blue-600"
         />
       )}
       <h2 className="mb-3 flex items-center gap-2 border-b-2 border-slate-900 pb-2">

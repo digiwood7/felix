@@ -77,7 +77,7 @@ body {
  * 툭 없어진다 — 네 번째 깜박임처럼 보이고 끝이 지저분하다.
  */
 .pet-flash {
-  animation: pet-flash 0.7s ease-in-out 3 forwards;
+  animation: pet-flash 1s ease-in-out 3 forwards;
 }
 
 /**
