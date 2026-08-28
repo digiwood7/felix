@@ -44,11 +44,21 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
   const [pending, setPending] = useState<Reservation | null>(null);
   const submitRef = useRef<HTMLButtonElement>(null);
 
-  // 덜 채우고 눌렀을 때 데려갈 자리
-  const dateRef = useRef<HTMLInputElement>(null);
-  const hourRef = useRef<HTMLSelectElement>(null);
-  const minuteRef = useRef<HTMLSelectElement>(null);
-  const locationRef = useRef<HTMLInputElement>(null);
+  /**
+   * 덜 채우고 눌렀을 때 데려갈 자리 — **칸이 아니라 구획이다.**
+   *
+   * 칸(select · input)에 초점을 주면 기기가 그 자리에서 선택기를 열어
+   * 버린다. 시각 드럼이 저 혼자 올라오면, 데려와 준 것이 아니라 무언가
+   * 잘못 눌린 것처럼 읽힌다. 구획에 초점을 주면 화면은 옮겨 가되
+   * 여는 것은 사용자가 정한다.
+   */
+  const dateSection = useRef<HTMLElement>(null);
+  const timeSection = useRef<HTMLElement>(null);
+  const locationSection = useRef<HTMLElement>(null);
+
+  /** 방금 데려온 구획. 잠깐 눈에 띄게 표시했다가 스스로 꺼진다 */
+  const [flash, setFlash] = useState<string | null>(null);
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 오늘 날짜와 지난 입력은 마운트 후에 넣는다.
   // 서버와 클라이언트가 달라져 하이드레이션이 깨지는 것을 피한다
@@ -104,20 +114,19 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
    * 시각은 시 · 분 두 칸이지만 사용자에게는 "예약 시간" 한 단계다.
    * 둘 중 먼저 빈 칸으로 데려간다.
    */
-  const missing: { label: string; focus: () => HTMLElement | null }[] = [
+  const missing: {
+    key: string;
+    label: string;
+    section: React.RefObject<HTMLElement | null>;
+  }[] = [
     ...(date === ""
-      ? [{ label: "예약 날짜", focus: () => dateRef.current }]
+      ? [{ key: "date", label: "예약 날짜", section: dateSection }]
       : []),
     ...(hour === null || minute === null
-      ? [
-          {
-            label: "예약 시간",
-            focus: () => (hour === null ? hourRef.current : minuteRef.current),
-          },
-        ]
+      ? [{ key: "time", label: "예약 시간", section: timeSection }]
       : []),
     ...(!selectedLocation
-      ? [{ label: "건물", focus: () => locationRef.current }]
+      ? [{ key: "location", label: "건물", section: locationSection }]
       : []),
   ];
 
@@ -135,15 +144,24 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
    */
   function askConfirm() {
     if (!ready) {
-      const target = missing[0].focus();
-      // 구획째로 옮긴다. 건물 라디오처럼 화면에서 1px 인 요소로 맞추면
-      // 무엇을 하라는 것인지 안 보이는 자리에 멈춘다
-      (target?.closest("section") ?? target)?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-      // 스크롤은 위에서 시켰다. focus 가 한 번 더 튀면 화면이 두 번 움직인다
-      target?.focus({ preventScroll: true });
+      const target = missing[0];
+      const el = target.section.current;
+
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      // 스크롤은 위에서 시켰다. 초점이 한 번 더 튀면 화면이 두 번 움직인다.
+      // 구획에 준다 — 안쪽 칸에 주면 기기가 선택기를 열어 버린다
+      el?.focus({ preventScroll: true });
+
+      /**
+       * 데려온 자리를 잠깐 크게 표시한다.
+       *
+       * 짧은 화면에서는 스크롤이 일어나지 않아 **아무 일도 안 한 것처럼
+       * 보인다.** 그 경우가 오히려 흔하다 — 세 단계가 한 화면에 다 들어가는
+       * 기기가 많다. 그래서 움직임이 아니라 표시가 신호를 맡는다.
+       */
+      if (flashTimer.current) clearTimeout(flashTimer.current);
+      setFlash(target.key);
+      flashTimer.current = setTimeout(() => setFlash(null), 2200);
       return;
     }
     setPending({
@@ -197,19 +215,22 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
       )}
       {/* 안내지의 "예약일시" 와 같은 낱말을 쓴다.
           "검사 시간" 은 안내지에서 소요 시간이라는 뜻으로 쓰이므로 피한다 */}
-      <Section step={1} title="예약 날짜" done={date !== ""}>
-        <DateField
-          value={date}
-          min={today}
-          onChange={setDate}
-          inputRef={dateRef}
-        />
+      <Section
+        step={1}
+        title="예약 날짜"
+        done={date !== ""}
+        sectionRef={dateSection}
+        flash={flash === "date"}
+      >
+        <DateField value={date} min={today} onChange={setDate} />
       </Section>
 
       <Section
         step={2}
         title="예약 시간"
         done={hour !== null && minute !== null}
+        sectionRef={timeSection}
+        flash={flash === "time"}
       >
         {/* 시 · 분을 한 줄에 둔다. 두 칸이 나란히 있어야 "08시 25분" 이
             하나의 시각이라는 것이 형태로 읽힌다 */}
@@ -218,7 +239,6 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
             label="시"
             value={hour}
             onChange={setHour}
-            selectRef={hourRef}
             options={HOURS.map((h) => ({
               value: h,
               label: `${String(h).padStart(2, "0")}시`,
@@ -228,7 +248,6 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
             label="분"
             value={minute}
             onChange={setMinute}
-            selectRef={minuteRef}
             options={MINUTES.map((m) => ({
               value: m,
               label: `${String(m).padStart(2, "0")}분`,
@@ -237,7 +256,13 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
         </div>
       </Section>
 
-      <Section step={3} title={ruleset.locations.ask} done={!!selectedLocation}>
+      <Section
+        step={3}
+        title={ruleset.locations.ask}
+        done={!!selectedLocation}
+        sectionRef={locationSection}
+        flash={flash === "location"}
+      >
         <p className="mb-2 text-[1.06rem] text-slate-600">
           {ruleset.locations.hint}
         </p>
@@ -245,7 +270,6 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
           name="location"
           legend="검사 장소"
           columns="grid-cols-2"
-          firstInputRef={locationRef}
           options={ruleset.locations.options.map((o) => ({
             value: o.id,
             label: o.label,
@@ -363,13 +387,11 @@ function TimeSelect({
   value,
   onChange,
   options,
-  selectRef,
 }: {
   label: string;
   value: number | null;
   onChange: (v: number) => void;
   options: { value: number; label: string }[];
-  selectRef?: React.Ref<HTMLSelectElement>;
 }) {
   const shown = options.find((o) => o.value === value);
 
@@ -409,7 +431,6 @@ function TimeSelect({
       </svg>
 
       <select
-        ref={selectRef}
         value={value === null ? "" : String(value)}
         onChange={(e) => onChange(Number(e.target.value))}
         aria-label={`예약 시간 ${label}`}
@@ -445,12 +466,10 @@ function DateField({
   value,
   min,
   onChange,
-  inputRef,
 }: {
   value: string;
   min: string;
   onChange: (v: string) => void;
-  inputRef?: React.Ref<HTMLInputElement>;
 }) {
   return (
     <div className="relative w-fit rounded-xl border-2 border-slate-500 focus-within:ring-4 focus-within:ring-slate-300">
@@ -476,7 +495,6 @@ function DateField({
       </div>
 
       <input
-        ref={inputRef}
         type="date"
         value={value}
         min={min || undefined}
@@ -513,12 +531,17 @@ function Section({
   step,
   title,
   done,
+  sectionRef,
+  flash,
   children,
 }: {
   step: number;
   title: string;
   /** 이 단계를 채웠는가. 버튼까지 내려가지 않아도 눈에 띈다 */
   done: boolean;
+  sectionRef?: React.Ref<HTMLElement>;
+  /** 방금 데려온 자리인가. 잠깐 크게 표시한다 */
+  flash?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -527,7 +550,22 @@ function Section({
     //
     // min-w-0 이 없으면 flex 자식의 기본값(min-width:auto) 때문에
     // 안쪽 요소가 넘칠 때 구획째로 밀려 가로 스크롤이 생긴다.
-    <section className="min-w-0">
+    //
+    // tabIndex -1 은 **초점을 받을 수는 있지만 Tab 순서에는 없다**는 뜻이다.
+    // 덜 채우고 눌렀을 때 여기로 데려오는 데만 쓰고, 평소 키보드 이동에는
+    // 끼어들지 않는다. 기본 외곽선은 끄고 아래 flash 표시로 대신한다.
+    <section
+      ref={sectionRef}
+      tabIndex={-1}
+      // 강조는 ring(= box-shadow)으로만 준다. 여백이나 테두리로 그리면
+      // 뜰 때마다 구획 높이가 변해 **아래 것들이 밀린다** — 데려다 놓고
+      // 화면을 흔드는 셈이라 오히려 자리를 잃는다. ring 은 자리를 안 먹는다
+      className={`min-w-0 rounded-xl outline-none transition-shadow duration-200 ${
+        flash
+          ? "ring-4 ring-amber-500 ring-offset-8 ring-offset-white"
+          : "ring-0 ring-offset-0"
+      }`}
+    >
       <h2 className="mb-3 flex items-center gap-2 border-b-2 border-slate-900 pb-2">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-900 text-[1.06rem] font-bold text-white">
           {step}
@@ -561,7 +599,6 @@ function Choices<T extends string | number>({
   options,
   selected,
   onSelect,
-  firstInputRef,
 }: {
   name: string;
   legend: string;
@@ -569,14 +606,12 @@ function Choices<T extends string | number>({
   options: { value: T; label: string }[];
   selected: T | null;
   onSelect: (v: T) => void;
-  /** 덜 고르고 넘어가려 할 때 데려갈 자리 */
-  firstInputRef?: React.Ref<HTMLInputElement>;
 }) {
   return (
     <fieldset>
       <legend className="sr-only">{legend}</legend>
       <div className={`grid ${columns} gap-2`}>
-        {options.map((o, i) => {
+        {options.map((o) => {
           const on = selected === o.value;
           return (
             <label
@@ -594,7 +629,6 @@ function Choices<T extends string | number>({
               }`}
             >
               <input
-                ref={i === 0 ? firstInputRef : undefined}
                 type="radio"
                 name={name}
                 value={String(o.value)}
