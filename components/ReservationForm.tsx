@@ -56,8 +56,18 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
   const timeSection = useRef<HTMLElement>(null);
   const locationSection = useRef<HTMLElement>(null);
 
-  /** 방금 데려온 구획. 잠깐 눈에 띄게 표시했다가 스스로 꺼진다 */
-  const [flash, setFlash] = useState<string | null>(null);
+  /**
+   * 표시를 켠 횟수. 0 이면 꺼져 있다.
+   *
+   * **덜 채운 구획을 전부 표시한다.** 첫 번째만 켜면, 두 개를 안 채운
+   * 사람은 하나를 채우고 다시 눌러야 나머지를 안다 — 같은 헤맴이 한 번
+   * 더 일어난다. 남은 일은 한 번에 다 보여 준다.
+   *
+   * 숫자로 세는 것은 다시 눌렀을 때 깜박임을 처음부터 다시 돌리기
+   * 위해서다. 켜짐/꺼짐 두 값만 있으면 이미 켜진 상태에서 또 누를 때
+   * 애니메이션이 이어서 돌아 아무 반응도 없는 것처럼 보인다.
+   */
+  const [flashRun, setFlashRun] = useState(0);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 오늘 날짜와 지난 입력은 마운트 후에 넣는다.
@@ -132,6 +142,10 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
 
   const ready = missing.length === 0;
 
+  // 표시가 켜져 있는 동안, 아직 안 채운 구획이면 참
+  const missingKeys = new Set(missing.map((m) => m.key));
+  const flashing = (key: string) => flashRun > 0 && missingKeys.has(key);
+
   /**
    * 바로 넘어가지 않고 확인 창을 먼저 띄운다.
    *
@@ -153,15 +167,22 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
       el?.focus({ preventScroll: true });
 
       /**
-       * 데려온 자리를 잠깐 크게 표시한다.
+       * 덜 채운 구획을 **전부** 세 번 깜박인다.
        *
        * 짧은 화면에서는 스크롤이 일어나지 않아 **아무 일도 안 한 것처럼
        * 보인다.** 그 경우가 오히려 흔하다 — 세 단계가 한 화면에 다 들어가는
        * 기기가 많다. 그래서 움직임이 아니라 표시가 신호를 맡는다.
+       *
+       * 깜박임은 0.7초 × 3 = 2.1초 (`app/globals.css` 의 `.pet-flash`).
+       *
+       * 끄는 시각은 **넉넉하게** 잡는다. 이 타이머는 지금 세지만
+       * 애니메이션은 React 가 요소를 붙이고 브라우저가 그린 뒤에 시작해서,
+       * 딱 맞춰 두면 **세 번째 깜박임이 잘린다.** 늦게 꺼도 손해가 없다 —
+       * `forwards` 가 마지막 프레임(투명)을 물고 있어 이미 안 보인다.
        */
       if (flashTimer.current) clearTimeout(flashTimer.current);
-      setFlash(target.key);
-      flashTimer.current = setTimeout(() => setFlash(null), 2200);
+      setFlashRun((n) => n + 1);
+      flashTimer.current = setTimeout(() => setFlashRun(0), 3200);
       return;
     }
     setPending({
@@ -220,7 +241,8 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
         title="예약 날짜"
         done={date !== ""}
         sectionRef={dateSection}
-        flash={flash === "date"}
+        flash={flashing("date")}
+        flashRun={flashRun}
       >
         <DateField value={date} min={today} onChange={setDate} />
       </Section>
@@ -230,7 +252,8 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
         title="예약 시간"
         done={hour !== null && minute !== null}
         sectionRef={timeSection}
-        flash={flash === "time"}
+        flash={flashing("time")}
+        flashRun={flashRun}
       >
         {/* 시 · 분을 한 줄에 둔다. 두 칸이 나란히 있어야 "08시 25분" 이
             하나의 시각이라는 것이 형태로 읽힌다 */}
@@ -261,7 +284,8 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
         title={ruleset.locations.ask}
         done={!!selectedLocation}
         sectionRef={locationSection}
-        flash={flash === "location"}
+        flash={flashing("location")}
+        flashRun={flashRun}
       >
         <p className="mb-2 text-[1.06rem] text-slate-600">
           {ruleset.locations.hint}
@@ -533,6 +557,7 @@ function Section({
   done,
   sectionRef,
   flash,
+  flashRun,
   children,
 }: {
   step: number;
@@ -540,8 +565,13 @@ function Section({
   /** 이 단계를 채웠는가. 버튼까지 내려가지 않아도 눈에 띈다 */
   done: boolean;
   sectionRef?: React.Ref<HTMLElement>;
-  /** 방금 데려온 자리인가. 잠깐 크게 표시한다 */
+  /** 아직 안 채운 자리인가. 세 번 깜박여 알린다 */
   flash?: boolean;
+  /**
+   * 표시를 켠 횟수. `key` 로 써서 다시 누를 때 겹침 요소를 새로 만든다 —
+   * 그래야 깜박임이 이어서 도는 대신 처음부터 다시 돈다.
+   */
+  flashRun?: number;
   children: React.ReactNode;
 }) {
   return (
@@ -557,15 +587,20 @@ function Section({
     <section
       ref={sectionRef}
       tabIndex={-1}
-      // 강조는 ring(= box-shadow)으로만 준다. 여백이나 테두리로 그리면
-      // 뜰 때마다 구획 높이가 변해 **아래 것들이 밀린다** — 데려다 놓고
-      // 화면을 흔드는 셈이라 오히려 자리를 잃는다. ring 은 자리를 안 먹는다
-      className={`min-w-0 rounded-xl outline-none transition-shadow duration-200 ${
-        flash
-          ? "ring-4 ring-amber-500 ring-offset-8 ring-offset-white"
-          : "ring-0 ring-offset-0"
-      }`}
+      className="relative min-w-0 outline-none"
     >
+      {/* 강조는 **겹쳐 놓은 테두리**로 그린다. 구획 자신에게 테두리나
+          여백을 주면 뜰 때마다 높이가 변해 아래 것들이 밀린다 — 데려다
+          놓고 화면을 흔드는 셈이라 오히려 자리를 잃는다.
+          겹침 요소는 자리를 안 먹고, 투명도만 깜박이면 되므로 다시 그리는
+          비용도 없다 */}
+      {flash && (
+        <span
+          key={flashRun}
+          aria-hidden="true"
+          className="pet-flash pointer-events-none absolute -inset-3 rounded-2xl border-4 border-amber-500"
+        />
+      )}
       <h2 className="mb-3 flex items-center gap-2 border-b-2 border-slate-900 pb-2">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-900 text-[1.06rem] font-bold text-white">
           {step}
