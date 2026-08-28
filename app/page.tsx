@@ -54,7 +54,15 @@ export default async function InputScreen({
             색도 slate-400(6.96:1) → slate-300(12.02:1)으로 올린다.
             대비 기준은 둘 다 넘었지만, **기준을 넘는 것과 눈에 들어오는 것은
             다르다** — 바로 아래 흰 글씨가 2.35rem 이라 상대적으로 죽는다 */}
-        <p className="text-[1.12rem] font-bold tracking-wide text-slate-300">
+        {/* ml-[0.05em] 는 **눈으로 맞추는 보정**이다. 배치 상자는 이미
+            제목과 같은 자리에서 시작한다(둘 다 38.25px). 어긋나 보이는 것은
+            글꼴이 글자 앞에 두는 여백이 크기에 비례해서 커지기 때문이다 —
+            19px "삼" 은 상자에서 0.19px, 40px "핵" 은 1.12px 안쪽에서
+            획이 시작한다. 그 차이 0.93px 만큼 병원명이 왼쪽으로 튀어나온다.
+
+            px 가 아니라 em 으로 준다. 브라우저 글자 크기를 키운 사용자에게도
+            같은 비율로 따라가야 한다 (globals.css 가 rem 을 쓰는 것과 같은 이유) */}
+        <p className="ml-[0.05em] text-[1.12rem] font-bold tracking-wide text-slate-300">
           삼성서울병원
         </p>
         {/* 명사가 이어지면 띄어 쓴다 — "검사준비안내" (X) / "검사 준비 안내" (O) */}
