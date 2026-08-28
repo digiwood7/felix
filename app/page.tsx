@@ -36,17 +36,33 @@ export default async function InputScreen({
       {/* 예약을 아직 모르므로 상대 거리는 남지 않는다 */}
       <LogView screen="s1" />
 
-      <header className="mb-6">
+      {/* 첫 화면에서 "이게 뭐 하는 화면인지" 를 먼저 세운다.
+          S2 의 예약 카드와 같은 형태(짙은 판)라 두 화면이 한 서비스로 읽힌다 */}
+      {/* 첫 화면에서 "이게 뭐 하는 화면인지" 를 먼저 세운다.
+          S2 의 예약 카드와 같은 형태(짙은 판)라 두 화면이 한 서비스로 읽힌다.
+
+          **크기 차이만으로는 제목이 서지 않는다.** 셋을 같은 회색조로 두면
+          큰 글씨가 아니라 긴 덩어리로 읽힌다. 그래서 세 층을 색으로도
+          가른다 — 발신자(흐림) · 제목(흰색) · 설명(중간). */}
+      <header className="mb-6 rounded-2xl bg-slate-900 px-5 pt-5 pb-6 text-white">
+        {/* 병원명은 발신자 표기다. 제목과 같은 무게로 두면 제목이 세 줄이 된다 */}
+        <p className="text-[0.98rem] font-bold tracking-wide text-slate-400">
+          삼성서울병원
+        </p>
         {/* 명사가 이어지면 띄어 쓴다 — "검사준비안내" (X) / "검사 준비 안내" (O) */}
-        <h1 className="text-[1.65rem] leading-tight font-extrabold text-slate-900">
-          핵의학과 PET 검사 준비 안내
+        <h1 className="mt-2 text-[2.35rem] leading-[1.15] font-extrabold tracking-[-0.02em]">
+          핵의학과 PET
+          <br />
+          검사 준비 안내
         </h1>
-        <p className="mt-2 text-[1.12rem] leading-relaxed text-slate-700">
+        {/* 제목과 설명 사이를 선으로 끊는다. 여백만으로는 두 문단이 붙어 읽힌다 */}
+        <div className="mt-5 mb-4 h-px bg-slate-700" />
+        <p className="text-[1.12rem] leading-relaxed text-slate-200">
           PET 검사 예약 날짜와 시간을 입력해 주세요. 준비 일정과 주의사항을
           알려드립니다.
         </p>
         {/* 안내지를 잃어버린 환자가 여기서 막힌다. 찾을 곳을 먼저 알려 준다 */}
-        <p className="mt-1 text-[1.06rem] leading-relaxed text-slate-600">
+        <p className="mt-2 text-[1rem] leading-relaxed text-slate-400">
           (예약 안내문이나 예약 문자에서 확인할 수 있습니다)
         </p>
       </header>

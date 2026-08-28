@@ -15,13 +15,18 @@ import type { Reservation } from "@/lib/schedule";
  * 이 조합으로는 개인 식별이 불가능해야 하고, 그것이 이 프로젝트가
  * 심의 없이 배포될 수 있는 유일한 근거다 (PRD §14).
  *
- * 시각을 시 · 분 두 단계 버튼으로 받는 이유
+ * 시각을 콤보박스 두 칸으로 받는 이유
  *   워크플로우 초안은 "정시/30분 단위 버튼 그리드" 였으나 실제 예약은
  *   08:25 처럼 5분 단위로 잡힌다. 30분 그리드로는 입력 자체가 불가능하다.
- *   드롭다운은 고령 사용자에게 조작이 어려워 쓰지 않는다 (PRD §5).
+ *   5분 단위를 버튼으로 펴면 시 10개 + 분 12개 = **22개가 화면을 덮고**,
+ *   날짜와 건물이 스크롤 아래로 밀린다 (레드팀 #9). 그래서 두 칸으로 접었다.
  *
- * 모든 선택은 라디오 버튼이다. 보기에는 버튼이지만 실제로는 <input type="radio">라
- * 스크린리더와 키보드가 그대로 동작한다. 직접 만든 버튼으로는 이게 안 된다.
+ *   **되돌린 판단이다.** 이 자리에는 원래 "드롭다운은 고령 사용자에게
+ *   조작이 어려워 쓰지 않는다 (PRD §5)" 가 적혀 있었다. 어느 쪽이 나은지는
+ *   W3 대기실 관찰에서 실제 소요 시간을 재고 정한다.
+ *
+ * 건물 선택은 그대로 라디오 버튼이다. 보기에는 버튼이지만 실제로는
+ * <input type="radio">라 스크린리더와 키보드가 그대로 동작한다.
  */
 export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
   const router = useRouter();
@@ -153,29 +158,26 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
       </Section>
 
       <Section step={2} title="예약 시간">
-        {/* 시와 분의 열 수를 맞춘다. 열이 다르면 글자 크기가 같아도
-            버튼 폭이 달라져(67px vs 86px) 글씨가 달라 보인다.
-            4열 쪽이 버튼도 커서 누르기 쉽다 */}
-        <Choices
-          name="hour"
-          legend="시"
-          columns="grid-cols-4"
-          options={HOURS.map((h) => ({ value: h, label: `${h}시` }))}
-          selected={hour}
-          onSelect={setHour}
-        />
-        <div className="mt-3">
-          {/* 버튼마다 "분"을 붙인다. 숫자만 두면 시 그리드와 구분되지 않는다 */}
-          <Choices
-            name="minute"
-            legend="분"
-            columns="grid-cols-4"
+        {/* 시 · 분을 한 줄에 둔다. 두 칸이 나란히 있어야 "08시 25분" 이
+            하나의 시각이라는 것이 형태로 읽힌다 */}
+        <div className="flex gap-2">
+          <TimeSelect
+            label="시"
+            value={hour}
+            onChange={setHour}
+            options={HOURS.map((h) => ({
+              value: h,
+              label: `${String(h).padStart(2, "0")}시`,
+            }))}
+          />
+          <TimeSelect
+            label="분"
+            value={minute}
+            onChange={setMinute}
             options={MINUTES.map((m) => ({
               value: m,
               label: `${String(m).padStart(2, "0")}분`,
             }))}
-            selected={minute}
-            onSelect={setMinute}
           />
         </div>
       </Section>
@@ -266,6 +268,94 @@ const HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
 
 /** 실제 예약은 08:25 처럼 5분 단위로 잡힌다 */
 const MINUTES = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
+
+/**
+ * 시각 한 칸 — 콤보박스.
+ *
+ * 브라우저 기본 <select> 라 목록은 OS 가 그린다. 안드로이드는 큰 목록,
+ * iOS 는 하단 드럼이라 **화면 안에서 22개 버튼을 훑는 것보다 한 번에
+ * 끝난다.** 대신 무엇을 고르는 칸인지가 닫혀 있을 때 안 보이므로,
+ * 고르기 전에는 "시" · "분" 을 자리표시자로 띄워 둔다.
+ *
+ * **보이는 글자는 우리가 그리고, 진짜 select 는 투명하게 겹친다.**
+ * 아래 DateField 와 같은 수법이고 이유도 같다 — Safari 는 select 에
+ * `text-align` 을 무시한다. 값을 화살표 옆에 붙이려면 select 안의 글자에
+ * 기대서는 안 된다. 크롬에서는 먹고 사파리에서는 안 먹어서, 고쳤는데
+ * 안 고쳐진 것처럼 보인다.
+ *
+ * 눌리는 것은 select 라 목록은 그대로 뜬다. 화살표도 우리가 그린다 —
+ * 기본 화살표를 두면 기종마다 달라 두 칸의 폭이 어긋난다.
+ *
+ * 고르기 전에는 화살표 왼쪽, 고른 뒤에는 가운데다. 안내와 값은 하는 일이
+ * 달라서 서는 자리도 다르다.
+ */
+function TimeSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: number | null;
+  onChange: (v: number) => void;
+  options: { value: number; label: string }[];
+}) {
+  const shown = options.find((o) => o.value === value);
+
+  return (
+    // 테두리는 slate-500 이상 — slate-300 은 흰 배경 대비 1.5:1 로
+    // WCAG 1.4.11(비텍스트 3:1) 미달이다
+    <div className="relative flex-1 rounded-xl border-2 border-slate-500 bg-white focus-within:ring-4 focus-within:ring-slate-300">
+      {/* 자리표시자는 화살표 왼쪽에 붙이고, 고른 값은 칸 한가운데로 옮긴다.
+          자리표시자는 "여기를 눌러 고르라" 는 안내라 화살표 옆에 있는 것이
+          맞고, 고른 값은 읽는 대상이라 두 칸의 중심이 맞아야
+          "09시 10분" 이 한 시각으로 읽힌다.
+          가운데일 때 양쪽 여백(px-10)을 같게 두어야 진짜 가운데가 된다 */}
+      <div
+        aria-hidden="true"
+        className={`pointer-events-none flex min-h-[56px] items-center ${
+          shown ? "justify-center px-10" : "justify-end pr-10 pl-3"
+        }`}
+      >
+        <span
+          className={`text-[1.24rem] font-bold ${shown ? "text-slate-900" : "text-slate-500"}`}
+        >
+          {shown ? shown.label : label}
+        </span>
+      </div>
+
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        className="pointer-events-none absolute top-1/2 right-3 h-6 w-6 -translate-y-1/2 text-slate-600"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M6 9l6 6 6-6" />
+      </svg>
+
+      <select
+        value={value === null ? "" : String(value)}
+        onChange={(e) => onChange(Number(e.target.value))}
+        aria-label={`예약 시간 ${label}`}
+        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+      >
+        {/* 아직 안 고른 상태. 고르고 나면 목록에서 사라져 되돌아갈 수 없게 두지 않는다 */}
+        <option value="" disabled>
+          {label}
+        </option>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
 
 /**
  * 날짜 입력.
