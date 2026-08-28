@@ -44,6 +44,12 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
   const [pending, setPending] = useState<Reservation | null>(null);
   const submitRef = useRef<HTMLButtonElement>(null);
 
+  // 덜 채우고 눌렀을 때 데려갈 자리
+  const dateRef = useRef<HTMLInputElement>(null);
+  const hourRef = useRef<HTMLSelectElement>(null);
+  const minuteRef = useRef<HTMLSelectElement>(null);
+  const locationRef = useRef<HTMLInputElement>(null);
+
   // 오늘 날짜와 지난 입력은 마운트 후에 넣는다.
   // 서버와 클라이언트가 달라져 하이드레이션이 깨지는 것을 피한다
   useEffect(() => {
@@ -91,17 +97,55 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
    * 접수처 연락처가 건물마다 다르므로(본관 · 암병원) 건물은 선택 사항이
    * 아니다. 뒤 화면들도 주소에 건물이 없으면 이리로 되돌린다.
    */
-  const ready =
-    date !== "" && hour !== null && minute !== null && selectedLocation;
+  /**
+   * 아직 안 고른 것들. **순서는 화면 순서 그대로다** — 위에서부터
+   * 채우게 데려가야 사용자가 자기 위치를 잃지 않는다.
+   *
+   * 시각은 시 · 분 두 칸이지만 사용자에게는 "예약 시간" 한 단계다.
+   * 둘 중 먼저 빈 칸으로 데려간다.
+   */
+  const missing: { label: string; focus: () => HTMLElement | null }[] = [
+    ...(date === ""
+      ? [{ label: "예약 날짜", focus: () => dateRef.current }]
+      : []),
+    ...(hour === null || minute === null
+      ? [
+          {
+            label: "예약 시간",
+            focus: () => (hour === null ? hourRef.current : minuteRef.current),
+          },
+        ]
+      : []),
+    ...(!selectedLocation
+      ? [{ label: "건물", focus: () => locationRef.current }]
+      : []),
+  ];
+
+  const ready = missing.length === 0;
 
   /**
    * 바로 넘어가지 않고 확인 창을 먼저 띄운다.
    *
    * 이 화면의 입력 하나가 뒤의 모든 시각을 정한다. 날짜를 하루 잘못 골라도
    * 타임라인은 아무 일 없다는 듯이 그려지기 때문에, 넘어가기 전에 한 번 묻는다.
+   *
+   * **덜 채웠어도 버튼은 죽이지 않는다.** 눌렀는데 아무 일도 일어나지
+   * 않으면 자기가 잘못 눌렀는지 화면이 멈췄는지 알 길이 없다 — 그게
+   * "왜 안 되지" 로 헤매는 진짜 원인이다. 대신 **빠진 자리로 데려간다.**
    */
   function askConfirm() {
-    if (!ready) return;
+    if (!ready) {
+      const target = missing[0].focus();
+      // 구획째로 옮긴다. 건물 라디오처럼 화면에서 1px 인 요소로 맞추면
+      // 무엇을 하라는 것인지 안 보이는 자리에 멈춘다
+      (target?.closest("section") ?? target)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+      // 스크롤은 위에서 시켰다. focus 가 한 번 더 튀면 화면이 두 번 움직인다
+      target?.focus({ preventScroll: true });
+      return;
+    }
     setPending({
       year: Number(date.slice(0, 4)),
       month: Number(date.slice(5, 7)),
@@ -153,11 +197,20 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
       )}
       {/* 안내지의 "예약일시" 와 같은 낱말을 쓴다.
           "검사 시간" 은 안내지에서 소요 시간이라는 뜻으로 쓰이므로 피한다 */}
-      <Section step={1} title="예약 날짜">
-        <DateField value={date} min={today} onChange={setDate} />
+      <Section step={1} title="예약 날짜" done={date !== ""}>
+        <DateField
+          value={date}
+          min={today}
+          onChange={setDate}
+          inputRef={dateRef}
+        />
       </Section>
 
-      <Section step={2} title="예약 시간">
+      <Section
+        step={2}
+        title="예약 시간"
+        done={hour !== null && minute !== null}
+      >
         {/* 시 · 분을 한 줄에 둔다. 두 칸이 나란히 있어야 "08시 25분" 이
             하나의 시각이라는 것이 형태로 읽힌다 */}
         <div className="flex gap-2">
@@ -165,6 +218,7 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
             label="시"
             value={hour}
             onChange={setHour}
+            selectRef={hourRef}
             options={HOURS.map((h) => ({
               value: h,
               label: `${String(h).padStart(2, "0")}시`,
@@ -174,6 +228,7 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
             label="분"
             value={minute}
             onChange={setMinute}
+            selectRef={minuteRef}
             options={MINUTES.map((m) => ({
               value: m,
               label: `${String(m).padStart(2, "0")}분`,
@@ -182,7 +237,7 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
         </div>
       </Section>
 
-      <Section step={3} title={ruleset.locations.ask}>
+      <Section step={3} title={ruleset.locations.ask} done={!!selectedLocation}>
         <p className="mb-2 text-[1.06rem] text-slate-600">
           {ruleset.locations.hint}
         </p>
@@ -190,6 +245,7 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
           name="location"
           legend="검사 장소"
           columns="grid-cols-2"
+          firstInputRef={locationRef}
           options={ruleset.locations.options.map((o) => ({
             value: o.id,
             label: o.label,
@@ -205,20 +261,33 @@ export default function ReservationForm({ ruleset }: { ruleset: ExamRuleset }) {
         않습니다. 선택하신 날짜와 시간은 이 기기에만 남습니다.
       </p>
 
+      {/**
+       * 덜 채웠어도 `disabled` 를 걸지 않는다. 누를 수 있어야 눌린 것을
+       * 알고, 눌린 것을 알아야 다음에 무엇을 할지 화면이 말해 줄 수 있다.
+       *
+       * 대신 **모양으로 상태를 알린다** — 덜 채우면 테두리 버튼, 다 채우면
+       * 채워진 버튼. 색만으로 나누지 않는다 (WCAG 1.4.1): 배경 · 테두리 ·
+       * 글자색이 함께 바뀌고, 아래 문구가 무엇이 남았는지 말로 적는다.
+       */}
       <button
         ref={submitRef}
         type="button"
         onClick={askConfirm}
-        disabled={!ready}
-        className="min-h-[60px] w-full rounded-2xl bg-slate-900 text-[1.35rem] font-bold text-white disabled:bg-slate-300 disabled:text-slate-500"
+        className={`min-h-[60px] w-full rounded-2xl text-[1.35rem] font-bold ${
+          ready
+            ? "bg-slate-900 text-white"
+            : "border-2 border-slate-500 bg-white text-slate-800"
+        }`}
       >
         준비 일정 보기
       </button>
 
-      {/* 화면의 단계 이름과 같은 낱말을 쓴다. "장소" 라고 하면 무엇을 덜 골랐는지 헷갈린다 */}
+      {/* 화면의 단계 이름과 같은 낱말을 쓴다. "장소" 라고 하면 무엇을 덜 골랐는지 헷갈린다.
+          **빠진 것만 이름을 댄다** — "모두 선택해 주세요" 는 셋 중 무엇이
+          남았는지 알려주지 않아서, 다 골랐다고 믿는 사람을 그대로 세워 둔다 */}
       {!ready && (
         <p aria-live="polite" className="-mt-4 text-[1.06rem] text-slate-700">
-          날짜 · 시간 · 건물을 모두 선택해 주세요
+          {missingSentence(missing.map((m) => m.label))}
         </p>
       )}
 
@@ -294,11 +363,13 @@ function TimeSelect({
   value,
   onChange,
   options,
+  selectRef,
 }: {
   label: string;
   value: number | null;
   onChange: (v: number) => void;
   options: { value: number; label: string }[];
+  selectRef?: React.Ref<HTMLSelectElement>;
 }) {
   const shown = options.find((o) => o.value === value);
 
@@ -338,6 +409,7 @@ function TimeSelect({
       </svg>
 
       <select
+        ref={selectRef}
         value={value === null ? "" : String(value)}
         onChange={(e) => onChange(Number(e.target.value))}
         aria-label={`예약 시간 ${label}`}
@@ -373,10 +445,12 @@ function DateField({
   value,
   min,
   onChange,
+  inputRef,
 }: {
   value: string;
   min: string;
   onChange: (v: string) => void;
+  inputRef?: React.Ref<HTMLInputElement>;
 }) {
   return (
     <div className="relative w-fit rounded-xl border-2 border-slate-500 focus-within:ring-4 focus-within:ring-slate-300">
@@ -402,6 +476,7 @@ function DateField({
       </div>
 
       <input
+        ref={inputRef}
         type="date"
         value={value}
         min={min || undefined}
@@ -418,13 +493,32 @@ function formatKoreanDate(value: string): string {
   return `${Number(value.slice(0, 4))}년 ${Number(value.slice(5, 7))}월 ${Number(value.slice(8, 10))}일`;
 }
 
+/**
+ * "예약 시간을 아직 안 고르셨습니다"
+ *
+ * 빠진 것을 이름으로 댄다. 조사(을/를)는 마지막 낱말의 받침이 정한다 —
+ * "건물을" · "예약 날짜를". "을(를)" 처럼 괄호로 도망가지 않는다.
+ * 읽어 주는 화면이라 소리로도 나가고, 그때 괄호가 그대로 읽힌다.
+ */
+function missingSentence(labels: string[]): string {
+  const joined = labels.join(" · ");
+  const last = joined.charCodeAt(joined.length - 1);
+  // 한글 음절은 (코드 - 0xAC00) % 28 이 0 이면 받침이 없다
+  const hasFinal =
+    last >= 0xac00 && last <= 0xd7a3 && (last - 0xac00) % 28 !== 0;
+  return `${joined}${hasFinal ? "을" : "를"} 아직 안 고르셨습니다`;
+}
+
 function Section({
   step,
   title,
+  done,
   children,
 }: {
   step: number;
   title: string;
+  /** 이 단계를 채웠는가. 버튼까지 내려가지 않아도 눈에 띈다 */
+  done: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -438,7 +532,17 @@ function Section({
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-900 text-[1.06rem] font-bold text-white">
           {step}
         </span>
-        <span className="text-[1.24rem] font-bold text-slate-900">{title}</span>
+        <span className="min-w-0 text-[1.24rem] font-bold text-slate-900">
+          {title}
+        </span>
+        {/* 채운 단계에만 붙는다. 체크 기호가 아니라 **글자**로 적는다 —
+            기호는 읽는 사람마다 다르게 해석되고 스크린리더가 읽지 못한다
+            (WCAG 1.1.1, PRD §13) */}
+        {done && (
+          <span className="ml-auto shrink-0 rounded-full bg-slate-100 px-3 py-1 text-[0.95rem] font-bold text-slate-700">
+            선택함
+          </span>
+        )}
       </h2>
       {children}
     </section>
@@ -457,6 +561,7 @@ function Choices<T extends string | number>({
   options,
   selected,
   onSelect,
+  firstInputRef,
 }: {
   name: string;
   legend: string;
@@ -464,12 +569,14 @@ function Choices<T extends string | number>({
   options: { value: T; label: string }[];
   selected: T | null;
   onSelect: (v: T) => void;
+  /** 덜 고르고 넘어가려 할 때 데려갈 자리 */
+  firstInputRef?: React.Ref<HTMLInputElement>;
 }) {
   return (
     <fieldset>
       <legend className="sr-only">{legend}</legend>
       <div className={`grid ${columns} gap-2`}>
-        {options.map((o) => {
+        {options.map((o, i) => {
           const on = selected === o.value;
           return (
             <label
@@ -477,13 +584,17 @@ function Choices<T extends string | number>({
               // 테두리는 slate-500 이상이어야 한다.
               // slate-300 은 흰 배경 대비 1.5:1 로 WCAG 1.4.11(비텍스트 3:1) 미달이다.
               // 고령 사용자에게는 버튼의 경계가 보이지 않는 것과 같다.
-              className={`flex min-h-[52px] cursor-pointer items-center justify-center rounded-xl border-2 text-[1.12rem] font-bold ${
+              // 라디오가 sr-only 라 초점이 어디 있는지 보이지 않는다.
+              // 덜 고르고 넘어가려 할 때 이 자리로 데려오므로, 초점을
+              // 받은 칸이 눈에 보여야 한다 (WCAG 2.4.7)
+              className={`flex min-h-[52px] cursor-pointer items-center justify-center rounded-xl border-2 text-[1.12rem] font-bold has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-slate-300 ${
                 on
                   ? "border-slate-900 bg-slate-900 text-white"
                   : "border-slate-500 bg-white text-slate-800"
               }`}
             >
               <input
+                ref={i === 0 ? firstInputRef : undefined}
                 type="radio"
                 name={name}
                 value={String(o.value)}
