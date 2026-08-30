@@ -215,6 +215,7 @@
     },
     "reasons_title": "접수처에 말씀하실 내용",
     "answered_at": "{time}에 답하신 내용입니다",
+    "answered_ago": "{ago} 전",
     "empty": "아직 문답에 답하지 않으셨습니다",
     "empty_action": "검사 준비 확인하기",
     "incomplete": "아직 답하지 않은 항목이 남아 있습니다",

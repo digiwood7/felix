@@ -7,7 +7,7 @@ import ShareButton from "@/components/ShareButton";
 import { loadAnswers } from "@/lib/answers";
 import type { StoredAnswers } from "@/lib/answers";
 import { decodeAnswersFromHash } from "@/lib/encode";
-import { toKoreanDateLabel } from "@/lib/koreanTime";
+import { minutesSinceInKST, toKoreanDateLabel } from "@/lib/koreanTime";
 import { answerCodes, distanceOf } from "@/lib/logEvent";
 import { sendEvent } from "@/lib/logSend";
 import type { Answers, TimeAnswer } from "@/lib/questions";
@@ -17,7 +17,13 @@ import {
   formatReservationDate,
   formatReservationTime,
 } from "@/lib/reservationLabel";
-import type { ExamRuleset, Level, LocationOption } from "@/lib/rules/types";
+import type {
+  CardCopy,
+  ExamRuleset,
+  Level,
+  LocationOption,
+} from "@/lib/rules/types";
+import { formatDuration } from "@/lib/schedule";
 import type { Reservation, Timeline } from "@/lib/schedule";
 import { triage } from "@/lib/triage";
 import type { Verdict } from "@/lib/triage";
@@ -180,15 +186,16 @@ export default function SummaryCard({
         <p className="mt-1 text-[1.06rem] text-slate-300">
           {formatLocation(location)}
         </p>
-        {/* 언제 답한 것인지. 날짜가 같아도 아침 답과 오후 답은 다르다 —
-            직원이 "그 뒤로 드신 것 없으시죠?" 를 한 번만 묻게 한다.
-            오래됐는지는 판정하지 않는다. 사실만 적는다 */}
-        <p className="mt-2 text-[1rem] text-slate-400">
-          {card.answered_at.replace("{time}", stored.savedAt)}
-        </p>
       </header>
 
       <Badge verdict={verdict} />
+
+      {/* 언제 답한 것인지 — **배지와 표 사이에 둔다.**
+          직원의 시선은 예약 시각 → 배지 → 표로 간다. 헤더 맨 아랫줄
+          검은 바탕의 흐린 회색으로 두면 그 동선 밖이라 읽히지 않는다.
+          아침에 만든 🟢 를 오후에 내밀어도 배지는 그대로이므로,
+          알아채는 일이 여기 한 줄에 걸려 있다 */}
+      <AnsweredAt copy={card} savedOn={stored.savedOn} savedAt={stored.savedAt} />
 
       <dl className="divide-y-2 divide-slate-200 rounded-b-2xl border-2 border-t-0 border-slate-300">
         <Row label={card.rows.fasting} value={fastingValue(ruleset, answers)} />
@@ -279,6 +286,57 @@ function Badge({ verdict }: { verdict: Verdict }) {
       <p className="text-[1.24rem] leading-snug font-extrabold">
         {verdict.message}
       </p>
+    </div>
+  );
+}
+
+/**
+ * 답한 시각과 그 뒤로 지난 시간.
+ *
+ * **"3시간 20분 전" 이 앞에 온다.** 시각만 적으면 직원이 지금 시각과
+ * 빼기를 해야 하는데, 그 뺄셈을 대신하는 것이 이 서비스가 하는 일이다.
+ * 절대 시각도 함께 남긴다 — "그 뒤로 드신 것 없으시죠?" 를 물으려면
+ * 기준점이 필요하다.
+ *
+ * **판정하지 않는다.** 몇 시간이 지나야 오래된 것인지는 값이 아니라
+ * 판단이고, 이 서비스는 판단하지 않는다 (원칙 2). 색도 바꾸지 않는다.
+ *
+ * 카드를 열어 둔 채 줄에 서 있을 수 있으므로 1분마다 다시 잰다.
+ * 서버에는 "지금" 이 없어 마운트 후에야 값이 생긴다.
+ */
+function AnsweredAt({
+  copy,
+  savedOn,
+  savedAt,
+}: {
+  copy: CardCopy;
+  /** "YYYY-MM-DD" */
+  savedOn: string;
+  /** "HH:MM" */
+  savedAt: string;
+}) {
+  const [now, setNow] = useState<number | null>(null);
+
+  useEffect(() => {
+    setNow(Date.now());
+    const timer = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const minutes = now === null ? null : minutesSinceInKST(savedOn, savedAt, now);
+  // 1분 미만이면 적을 것이 없다. 기기 시계가 뒤로 가 있으면 음수가 나온다
+  const ago = minutes !== null && minutes >= 1 ? formatDuration(minutes) : null;
+
+  return (
+    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 border-x-2 border-b-2 border-slate-300 bg-white px-5 py-3">
+      {ago && (
+        <span className="text-[1.12rem] font-extrabold text-slate-900">
+          {copy.answered_ago.replace("{ago}", ago)}
+        </span>
+      )}
+      <span className="text-[1.06rem] text-slate-700">
+        {copy.answered_at.replace("{time}", savedAt)}
+      </span>
     </div>
   );
 }

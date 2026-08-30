@@ -168,8 +168,13 @@ function isWithin(epoch: number, [from, to]: [TimeOfDay, TimeOfDay]): boolean {
   return value >= parseTimeOfDay(from) && value < parseTimeOfDay(to);
 }
 
-/** 80 → "1시간 20분" */
-function formatDuration(totalMinutes: number): string {
+/**
+ * 80 → "1시간 20분"
+ *
+ * 카드의 "3시간 20분 전" 도 이 함수를 쓴다. 같은 뜻의 표기가 두 벌이
+ * 되면 언젠가 한쪽만 고쳐진다.
+ */
+export function formatDuration(totalMinutes: number): string {
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
 

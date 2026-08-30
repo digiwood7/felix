@@ -93,6 +93,31 @@ export function isBeforeInKST(
 }
 
 /**
+ * 그 날짜 · 시각으로부터 지금까지 몇 분이 지났는지 (KST).
+ *
+ * 카드에 "3시간 20분 전에 답하신 내용입니다" 를 적는 데 쓴다 (PRD §8 F2).
+ * 접수 직원이 14:09 를 보고 머릿속으로 빼기를 하지 않게 하려는 것이고,
+ * 그 뺄셈을 대신하는 것이 이 서비스가 하는 일이다.
+ *
+ * **판정하지 않는다.** 몇 시간이 지나야 오래된 것인지는 값이 아니라
+ * 판단이고, 이 서비스는 판단하지 않는다 (원칙 2). 지난 시간은 사실이다.
+ *
+ * `todayInKST` 와 같은 규칙이다 — 계산 경로가 아니라 표기용이다.
+ * 기기 시계가 뒤로 가 있으면 음수가 나온다. 부르는 쪽이 가린다.
+ */
+export function minutesSinceInKST(
+  date: string,
+  time: string,
+  now: number = Date.now(),
+): number {
+  const at = Date.parse(`${date}T${time}:00Z`);
+  const nowKST = Date.parse(
+    `${new Date(now + KST_OFFSET_MS).toISOString().slice(0, 16)}:00Z`,
+  );
+  return Math.floor((nowKST - at) / 60_000);
+}
+
+/**
  * KST 기준으로 오늘부터 그 날짜까지 며칠 남았는지.
  * 오늘이면 0, 내일이면 1, 어제면 -1.
  */

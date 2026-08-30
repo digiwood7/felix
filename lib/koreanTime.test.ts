@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   daysUntilInKST,
   isBeforeInKST,
+  minutesSinceInKST,
   nowTimeInKST,
   toDateTimeAttr,
   toKoreanDateLabel,
@@ -166,5 +167,37 @@ describe("isBeforeInKST", () => {
     const 자정직후 = Date.parse("2026-08-23T15:01:00Z"); // KST 8월 24일 00:01
     expect(isBeforeInKST("2026-08-24", "02:00", 자정직후)).toBe(true);
     expect(isBeforeInKST("2026-08-23", "23:00", 자정직후)).toBe(false);
+  });
+});
+
+/**
+ * 답한 뒤로 지난 시간 — 카드에 "3시간 20분 전" 으로 적는다.
+ *
+ * 접수 직원이 14:09 를 보고 머릿속으로 빼기를 하지 않게 하려는 것이다.
+ * 판정은 하지 않는다. 지난 시간은 사실이고, 그것으로 무엇을 할지는
+ * 직원이 정한다.
+ */
+describe("minutesSinceInKST — 답한 뒤로 지난 시간", () => {
+  it("같은 날 몇 시간 뒤", () => {
+    // 답: KST 8월 30일 14:09 / 지금: KST 17:29
+    const 지금 = Date.parse("2026-08-30T08:29:00Z");
+    expect(minutesSinceInKST("2026-08-30", "14:09", 지금)).toBe(200);
+  });
+
+  it("방금 답했으면 0분", () => {
+    const 지금 = Date.parse("2026-08-30T05:09:00Z"); // KST 14:09
+    expect(minutesSinceInKST("2026-08-30", "14:09", 지금)).toBe(0);
+  });
+
+  // 자정을 넘긴 카드. 날짜가 바뀌어도 분 단위로 이어져야 한다
+  it("자정을 넘겨도 이어서 잰다", () => {
+    const 지금 = Date.parse("2026-08-30T16:30:00Z"); // KST 8월 31일 01:30
+    expect(minutesSinceInKST("2026-08-30", "23:00", 지금)).toBe(150);
+  });
+
+  // 기기 시계가 뒤로 가 있는 경우. 부르는 쪽이 가린다
+  it("아직 오지 않은 시각이면 음수다", () => {
+    const 지금 = Date.parse("2026-08-30T05:00:00Z"); // KST 14:00
+    expect(minutesSinceInKST("2026-08-30", "14:09", 지금)).toBe(-9);
   });
 });
