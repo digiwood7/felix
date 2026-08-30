@@ -749,6 +749,11 @@ function NumberInput({
  *
  * 셋을 모두 고르기 전에는 답으로 넘기지 않는다. 기본값을 채워 두면
  * 환자가 고르지 않은 시각이 요약카드에 찍힌다.
+ *
+ * **날짜를 고르기 전에는 시 · 분을 내밀지 않는다.** 네 칸을 한꺼번에
+ * 펴 두면 어디부터 손대야 하는지를 환자가 정해야 하고, 시부터 고른
+ * 사람은 날짜를 비운 채 "다음" 이 막혀 있는 이유를 찾게 된다.
+ * 한 번에 한 가지만 보이면 다음에 할 일이 언제나 하나다.
  */
 function TimePicker({
   copy,
@@ -793,32 +798,34 @@ function TimePicker({
         />
       </fieldset>
 
-      <div className="flex gap-3">
-        <Select
-          label={copy.hour_label}
-          value={hour}
-          options={Array.from({ length: 24 }, (_, i) => ({
-            value: i,
-            label: `${i}${copy.hour_label}`,
-          }))}
-          onSelect={(v) => {
-            setHour(v);
-            emit(day, v, minute);
-          }}
-        />
-        <Select
-          label={copy.minute_label}
-          value={minute}
-          options={minutes.map((m) => ({
-            value: m,
-            label: `${String(m).padStart(2, "0")}${copy.minute_label}`,
-          }))}
-          onSelect={(v) => {
-            setMinute(v);
-            emit(day, hour, v);
-          }}
-        />
-      </div>
+      {day !== null && (
+        <div className="flex gap-3">
+          <Select
+            label={copy.hour_label}
+            value={hour}
+            options={Array.from({ length: 24 }, (_, i) => ({
+              value: i,
+              label: `${i}${copy.hour_label}`,
+            }))}
+            onSelect={(v) => {
+              setHour(v);
+              emit(day, v, minute);
+            }}
+          />
+          <Select
+            label={copy.minute_label}
+            value={minute}
+            options={minutes.map((m) => ({
+              value: m,
+              label: `${String(m).padStart(2, "0")}${copy.minute_label}`,
+            }))}
+            onSelect={(v) => {
+              setMinute(v);
+              emit(day, hour, v);
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
