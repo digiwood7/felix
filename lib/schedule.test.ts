@@ -306,6 +306,45 @@ describe("8. 문구는 룰셋에서 읽는다", () => {
     expect(find(timeline, "exam").text).toBe("검사 시작 — 약 1시간 20분 소요");
   });
 
+  it("검사 항목에 구간이 붙는다 — 길이와 하는 일", () => {
+    const phases = find(timeline, "exam").phases!;
+    expect(phases.title).toBe("검사실에서는 이렇게 진행됩니다");
+    expect(phases.items.map((p) => `${p.duration} ${p.text}`)).toEqual([
+      "약 5분 주사를 맞습니다",
+      "약 50분 대기실에 누워 쉽니다",
+      "약 5분 화장실에 다녀옵니다",
+      "약 20분 촬영합니다",
+    ]);
+  });
+
+  /**
+   * 예약 시각에 5분씩 더해 나가면 그럴듯한 진행표가 나오지만, 앞 검사가
+   * 밀리는 순간 전부 틀린다. 밀려도 틀리지 않는 것은 길이뿐이다.
+   */
+  it("구간에 시각을 만들지 않는다", () => {
+    for (const phase of find(timeline, "exam").phases!.items) {
+      expect(phase.duration).not.toMatch(/\d{1,2}:\d{2}/);
+      expect(phase.text).not.toMatch(/\d{1,2}:\d{2}/);
+    }
+  });
+
+  it("구간 주의사항은 그 구간에만 붙는다", () => {
+    const items = find(timeline, "exam").phases!.items;
+    const uptake = items.find((p) => p.id === "uptake")!;
+    expect(uptake.noteSummary).toBe("대기실 주의사항");
+    expect(uptake.notes).toHaveLength(4);
+    // 나머지 구간에는 열 것이 없다
+    for (const other of items.filter((p) => p.id !== "uptake")) {
+      expect(other.noteSummary).toBeNull();
+    }
+  });
+
+  it("검사 말고 다른 항목에는 구간이 없다", () => {
+    for (const kind of ["fasting", "arrival", "diabetes"]) {
+      expect(find(timeline, kind).phases).toBeUndefined();
+    }
+  });
+
   it("당뇨 항목은 묻지 않고 조건부 문구로 항상 나온다", () => {
     const diabetes = find(timeline, "diabetes");
     expect(diabetes.text).toContain("쓰신다면");

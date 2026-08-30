@@ -120,6 +120,64 @@ export interface Exam {
   text: string;
   /** `{duration}` · `{time}` 을 쓸 수 있다 */
   speech_text?: SpeechText;
+  /** 구간 목록의 제목. 목록만 나열하면 무엇을 보고 있는지 모른다 */
+  phases_title?: string;
+  /** 구간 길이 표기. `{duration}` 자리에 길이가 들어간다 */
+  phase_duration_text?: string;
+  /** 구간의 낭독 문구. `{duration}` · `{text}` 를 쓸 수 있다 */
+  phase_speech_text?: SpeechText;
+  phases?: ExamPhase[];
+}
+
+/**
+ * 검사실 안에서의 한 구간 — **길이와 하는 일만** 적는다 (PRD §8 F1).
+ *
+ * 환자가 "1시간 20분" 을 보고 하는 질문은 "그 시간에 뭘 하는데요" 다.
+ * 그 답이 없으면 20분짜리 촬영을 기대하고 와서 대기실에서 되묻는다.
+ *
+ * **절대 시각을 두지 않는다.** 앞 검사가 밀리면 09:20 은 그냥 틀린
+ * 숫자가 되고, 종료 시각을 내림하면 실제보다 **이르게 끝난다고**
+ * 알려주는 것이라 원칙 3과 방향이 반대다 (PRD §9.2).
+ * 길이는 대기가 밀려도 틀리지 않는다.
+ */
+export interface ExamPhase {
+  id: string;
+  /**
+   * 구간 길이(분).
+   *
+   * 합이 `duration_min` 과 같아야 한다 — 두 숫자가 갈리면 환자는 한
+   * 화면 안에서 모순을 본다. rules.test.ts 가 잠근다.
+   */
+  min: number;
+  /** 이 구간에 하는 일. 한 줄로 끝나야 훑을 때 걸린다 */
+  text: string;
+  /**
+   * 이 구간만의 낭독 문구. 없으면 `exam.phase_speech_text` 를 쓴다.
+   * `{duration}` · `{text}` 를 쓸 수 있다.
+   *
+   * 화면에서는 구간이 위아래로 놓여 "화장실" 이 어느 시점인지 자리로
+   * 보인다. 소리에는 그 배치가 없어서 앞의 대기 50분에 붙은 것처럼
+   * 들린다 — 그럴 때 소리 쪽에만 시점을 적어 준다.
+   */
+  speech_text?: SpeechText;
+  /**
+   * 접힌 줄의 제목. 이 구간에만 해당하는 주의사항을 연다.
+   *
+   * "자세히 보기" 처럼 내용을 가리는 말을 쓰지 않는다. 닫힌 채로도
+   * 무엇에 관한 것인지는 보여야 열지 말지를 정할 수 있다.
+   * 목록을 늘 펴 두면 훑어야 할 줄이 네 배가 된다.
+   */
+  note_summary?: string;
+  /**
+   * 접힌 줄의 낭독 문구. 없으면 `note_summary` 를 그대로 읽는다.
+   *
+   * 화면에서는 이 줄이 **누르는 것**이라 이름만 붙어 있으면 되지만,
+   * 소리에는 누를 것이 없다. "대기실 주의사항." 하고 끊기면 다음 문장이
+   * 그 주의사항인지 다른 항목인지 알 수 없어, 문장으로 열어 준다.
+   */
+  note_summary_speech?: SpeechText;
+  /** 한 줄에 한 문장씩 (Arrival.notes 와 같은 이유) */
+  notes?: string[];
 }
 
 export interface Fasting {

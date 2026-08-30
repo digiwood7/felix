@@ -64,6 +64,40 @@ export interface TimelineItem {
    */
   speechText: string | null;
   notes: string[];
+  /**
+   * 검사 항목에만 붙는 구간 목록. 다른 항목에는 없다.
+   *
+   * 여기서 길이를 이미 말("약 50분")로 바꿔 둔다. 화면과 소리가 같은
+   * 문자열을 쓰게 하려는 것이다 — 한쪽에서 다시 계산하면 언젠가 갈린다.
+   */
+  phases?: TimelinePhases;
+}
+
+export interface TimelinePhases {
+  title: string;
+  items: TimelinePhase[];
+}
+
+export interface TimelinePhase {
+  id: string;
+  /**
+   * "약 50분". **HH:MM 형태를 만들지 않는다** — 큰 글씨의 시각과 같은
+   * 생김새가 되는 순간 "50분" 이 "50분에" 로 읽힌다.
+   */
+  duration: string;
+  text: string;
+  /**
+   * 이 구간만의 낭독 문구 틀. 없으면(null) 소리는 검사 공통 틀을 쓴다.
+   *
+   * 자리표시자를 채우지 않은 채로 넘긴다 — 채우는 것은 소리 쪽의
+   * 일이고(lib/speech.ts), 화면은 이 문구를 쓰지 않는다.
+   */
+  speechText: string | null;
+  /** 접힌 줄의 제목. 없으면 접을 것이 없다 */
+  noteSummary: string | null;
+  /** 접힌 줄의 낭독 문구. 없으면(null) 소리도 noteSummary 를 그대로 읽는다 */
+  noteSummarySpeech: string | null;
+  notes: string[];
 }
 
 export interface TimelineDay {
@@ -291,10 +325,42 @@ export function buildTimeline(
           formatDuration(ruleset.duration_min),
         ) ?? null,
       notes: [],
+      phases: examPhases(ruleset),
     },
   });
 
   return groupByDate(placed);
+}
+
+/**
+ * 검사실 안에서의 구간 목록.
+ *
+ * **시각을 만들지 않는다.** 예약 시각에 5분씩 더해 나가면 그럴듯한
+ * 진행표가 나오지만, 앞 검사가 20분 밀리는 순간 그 표는 전부 틀린다.
+ * 밀려도 틀리지 않는 것은 길이뿐이다 (lib/rules/types.ts ExamPhase).
+ *
+ * 룰셋에 phases 가 없으면 아무것도 만들지 않는다 — 검사에 따라
+ * 구간을 나눠 알릴 것이 없을 수 있다.
+ */
+function examPhases(ruleset: ExamRuleset): TimelinePhases | undefined {
+  const { phases, phases_title, phase_duration_text } = ruleset.exam;
+  if (!phases || phases.length === 0 || !phases_title) return undefined;
+
+  return {
+    title: phases_title,
+    items: phases.map((phase) => ({
+      id: phase.id,
+      duration: (phase_duration_text ?? "{duration}").replace(
+        "{duration}",
+        formatDuration(phase.min),
+      ),
+      text: phase.text,
+      speechText: phase.speech_text ?? null,
+      noteSummary: phase.note_summary ?? null,
+      noteSummarySpeech: phase.note_summary_speech ?? null,
+      notes: phase.notes ?? [],
+    })),
+  };
 }
 
 function groupByDate(placed: Placed[]): Timeline {

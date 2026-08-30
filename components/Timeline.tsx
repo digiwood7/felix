@@ -4,7 +4,11 @@ import {
   toKoreanTimeLabel,
 } from "@/lib/koreanTime";
 import type { ExamRuleset, TimelineItemKind } from "@/lib/rules/types";
-import type { Timeline as TimelineData, TimelineItem } from "@/lib/schedule";
+import type {
+  Timeline as TimelineData,
+  TimelineItem,
+  TimelinePhases,
+} from "@/lib/schedule";
 
 /**
  * S2 타임라인 — PRD §8 F1
@@ -151,6 +155,9 @@ function Item({
           {item.text}
         </p>
 
+        {/* 구간 — 검사 항목에만 있다 */}
+        {item.phases && <Phases phases={item.phases} />}
+
         {/* 참고 — 다른 재질로 분리한다. 같은 목록에 두면 한 덩어리가 된다 */}
         {item.notes.length > 0 && (
           <ul className="mt-3 flex flex-col gap-2 rounded-xl bg-slate-100 px-3.5 py-3">
@@ -166,5 +173,83 @@ function Item({
         )}
       </div>
     </li>
+  );
+}
+
+/**
+ * 검사실 안에서의 구간 — "1시간 20분 동안 뭘 하는지" 에 대한 답.
+ *
+ * 길이만 적고 시각은 적지 않는다. 이유는 lib/rules/types.ts 의
+ * ExamPhase 에 있다 — 밀려도 틀리지 않는 것은 길이뿐이다.
+ *
+ * **위쪽 시각(37px)과 생김새가 확실히 달라야 한다.** 같은 자리에 같은
+ * 굵기로 숫자가 놓이면 "50분" 이 "50분에" 로 읽힌다. 그래서 길이는
+ * 본문 크기(19px)로 낮추고, 앞에 "약" 을 붙이고, 콜론을 만들지 않는다.
+ *
+ * 주의사항은 접는다. 네 줄을 늘 펴 두면 구간 넷이 여덟 줄이 되고,
+ * 그러면 정작 구간 자체가 안 읽힌다.
+ */
+function Phases({ phases }: { phases: TimelinePhases }) {
+  return (
+    <div className="mt-3 rounded-xl bg-slate-100 px-3.5 py-3">
+      <p className="mb-2.5 text-[1rem] font-bold text-slate-600">
+        {phases.title}
+      </p>
+
+      <ol className="flex flex-col gap-2.5">
+        {phases.items.map((phase) => (
+          <li key={phase.id}>
+            <div className="flex items-baseline gap-3">
+              {/* 길이 칸에 폭을 준다. 폭이 없으면 "약 5분" 과 "약 50분" 이
+                  한 글자만큼 어긋나 하는 일의 시작선이 줄마다 달라진다 */}
+              <span className="min-w-[4.6rem] shrink-0 text-[1.12rem] font-bold whitespace-nowrap text-slate-700 tabular-nums">
+                {phase.duration}
+              </span>
+              <span className="text-[1.12rem] leading-snug text-slate-900">
+                {phase.text}
+              </span>
+            </div>
+
+            {phase.noteSummary && phase.notes.length > 0 && (
+              <PhaseNotes summary={phase.noteSummary} notes={phase.notes} />
+            )}
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+/**
+ * 접었다 펴는 주의사항.
+ *
+ * `<details>` 를 쓴다. JS 없이 동작하고, 스크린리더가 "접힘/펼침" 을
+ * 그대로 읽는다. 직접 만든 토글은 둘 다 손으로 챙겨야 한다.
+ *
+ * **제목에 "자세히 보기" 같은 말을 쓰지 않는다.** 닫힌 채로도 무엇에
+ * 관한 것인지 보여야 궁금한 사람만 열고 나머지는 지나간다.
+ * 삼각형은 장식이다 — 뜻은 제목의 글자가 담는다 (PRD §13).
+ */
+function PhaseNotes({ summary, notes }: { summary: string; notes: string[] }) {
+  return (
+    <details className="group mt-2 rounded-lg bg-white">
+      <summary className="flex min-h-[48px] cursor-pointer list-none items-center gap-2 px-3 text-[1.06rem] leading-snug font-bold text-slate-700 [&::-webkit-details-marker]:hidden">
+        <span className="flex-1">{summary}</span>
+        <span
+          aria-hidden="true"
+          className="shrink-0 text-slate-500 transition-transform group-open:rotate-180"
+        >
+          ▾
+        </span>
+      </summary>
+
+      <ul className="flex flex-col gap-2 px-3 pt-1 pb-3">
+        {notes.map((note) => (
+          <li key={note} className="text-[1.06rem] leading-snug text-slate-700">
+            {note}
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }

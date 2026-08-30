@@ -62,6 +62,34 @@ export function speechBlocks(
       }
 
       sentences.push(...item.notes);
+
+      /**
+       * 구간은 **접힘과 무관하게 다 읽는다.**
+       *
+       * 화면에서는 주의사항이 접혀 있지만, 듣기를 쓰는 사람은 애초에
+       * 읽기 어려운 사람이라 접힌 것을 열지 못한다. 소리에는 훑기가
+       * 없으므로 감출 이유도 없다.
+       */
+      if (item.phases) {
+        sentences.push(item.phases.title);
+        for (const phase of item.phases.items) {
+          // 구간마다 다른 문구를 줄 수 있다. 없으면 검사 공통 틀을 쓴다
+          const template =
+            phase.speechText ??
+            ruleset.exam.phase_speech_text ??
+            "{duration} {text}";
+
+          sentences.push(
+            template
+              .replace("{duration}", phase.duration)
+              .replace("{text}", phase.text),
+          );
+          if (phase.noteSummary) {
+            sentences.push(phase.noteSummarySpeech ?? phase.noteSummary);
+          }
+          sentences.push(...phase.notes);
+        }
+      }
     }
 
     blocks.push(sentences);

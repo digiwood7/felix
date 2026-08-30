@@ -46,7 +46,33 @@
 
   "exam": {
     "text": "검사 시작 — 약 {duration} 소요",
-    "speech_text": "검사 시작, 약 {duration} 소요됩니다"
+    "speech_text": "검사 시작, 약 {duration} 소요됩니다",
+    "phases_title": "검사실에서는 이렇게 진행됩니다",
+    "phase_duration_text": "약 {duration}",
+    "phase_speech_text": "{duration} 동안 {text}",
+    "phases": [
+      { "id": "injection", "min": 5, "text": "주사를 맞습니다" },
+      {
+        "id": "uptake",
+        "min": 50,
+        "text": "대기실에 누워 쉽니다",
+        "note_summary": "대기실 주의사항",
+        "note_summary_speech": "대기실 주의사항을 알려드리겠습니다",
+        "notes": [
+          "걷거나 움직이지 마시고 편히 누워 계세요",
+          "휴대폰은 보셔도 됩니다",
+          "보호자는 1명까지 대기실에 함께 계실 수 있습니다",
+          "화장실은 중간에 가셔도 됩니다"
+        ]
+      },
+      {
+        "id": "toilet",
+        "min": 5,
+        "text": "화장실에 다녀옵니다",
+        "speech_text": "{duration} 촬영 직전 화장실에 다녀옵니다"
+      },
+      { "id": "scan", "min": 20, "text": "촬영합니다" }
+    ]
   },
 
   "fasting": {

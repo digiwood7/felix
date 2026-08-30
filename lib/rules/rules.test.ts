@@ -59,6 +59,32 @@ describe("룰셋 — 현행 실무 기준값", () => {
     expect(f18FdgPet.duration_min).toBe(80);
   });
 
+  /**
+   * 구간 5 + 50 + 5 + 20 = 80.
+   *
+   * 합이 어긋나면 환자는 한 화면 안에서 모순을 본다 — 위에는
+   * "약 1시간 20분", 아래 구간을 더하면 1시간 30분. 어느 쪽을 믿을지
+   * 정하려고 접수에 물어보는 순간, 줄이려던 그 문답이 늘어난다.
+   */
+  it("검사 구간의 합이 소요시간과 같다", () => {
+    const phases = f18FdgPet.exam.phases ?? [];
+    expect(phases.length).toBeGreaterThan(0);
+    expect(phases.reduce((sum, p) => sum + p.min, 0)).toBe(
+      f18FdgPet.duration_min,
+    );
+  });
+
+  /**
+   * 구간에 절대 시각을 두지 않는다.
+   *
+   * 앞 검사가 밀리면 09:20 은 그냥 틀린 숫자가 된다. 종료 시각을
+   * 내림하면 실제보다 이르게 끝난다고 알리는 것이라 원칙 3과 방향이
+   * 반대다 (PRD §9.2). 길이는 밀려도 틀리지 않는다.
+   */
+  it("구간에 시각이 적혀 있지 않다", () => {
+    expect(JSON.stringify(raw.exam)).not.toMatch(/\d{1,2}:\d{2}/);
+  });
+
   it("체중 기준은 150kg", () => {
     expect(f18FdgPet.questions.body.weight.limit).toBe(150);
   });
@@ -76,6 +102,8 @@ describe("룰셋 — 현행 실무 기준값", () => {
       f18FdgPet.fasting.note,
       f18FdgPet.fasting.allowed_note,
       ...f18FdgPet.conditional.map((c) => c.after_text),
+      // 구간 주의사항도 같은 규칙이다 — 접으면 한 줄이 더 좁아진다
+      ...(f18FdgPet.exam.phases ?? []).flatMap((p) => p.notes ?? []),
     ].filter(Boolean) as string[];
 
     for (const note of all) {
