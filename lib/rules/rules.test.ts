@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import raw from "./f18-fdg-pet.json";
 import { f18FdgPet } from "./index";
-import type { Level, TriageCondition } from "./types";
+import type { AnswerableFrom, Level, TriageCondition } from "./types";
 
 const LEVELS: Level[] = ["ok", "tell", "call"];
 
@@ -301,6 +301,49 @@ describe("룰셋 — 문답", () => {
   it("키 · 몸무게를 모른다고 답할 수 있다", () => {
     expect(f18FdgPet.questions.body.unknown_label).toBeTruthy();
     expect(f18FdgPet.questions.body.hint).toContain("접수");
+  });
+
+  /**
+   * 문항이 열리는 시점 (2026-08-30 확정).
+   *
+   *   금식   — 금식 시작부터. 그 전에는 아직 일어나지 않은 일이다
+   *   당뇨   — 마지노선부터. 그 전에 답하면 이후 복용이 반영되지 않는다
+   *   여성   — 검사 당일 00:00부터. 생리 여부는 며칠 전 답과 달라진다
+   *   키·몸무게 — 언제든. 미리 답해 두면 당일에 다시 묻지 않는다
+   */
+  it("문항마다 답할 수 있는 시점이 정해져 있다", () => {
+    const q = f18FdgPet.questions;
+    expect(q.fasting.answerable_from).toBe("fasting_start");
+    expect(q.diabetes.answerable_from).toBe("diabetes_cutoff");
+    expect(q.female.answerable_from).toBe("exam_day");
+    expect(q.body.answerable_from).toBe("always");
+  });
+
+  it("답할 수 있는 시점이 코드가 아는 값이다", () => {
+    const known: AnswerableFrom[] = [
+      "always",
+      "fasting_start",
+      "diabetes_cutoff",
+      "exam_day",
+    ];
+    const q = f18FdgPet.questions;
+    for (const from of [
+      q.fasting.answerable_from,
+      q.diabetes.answerable_from,
+      q.body.answerable_from,
+      q.female.answerable_from,
+    ]) {
+      expect(known).toContain(from);
+    }
+  });
+
+  // 막지 않는다. 기기 시계는 틀릴 수 있고, 대신 답해 주는 보호자도 있다
+  it("잠긴 문항에도 열고 넘어갈 길이 있다", () => {
+    expect(f18FdgPet.questions.locked.action).toBeTruthy();
+    expect(f18FdgPet.questions.locked.skip).toBeTruthy();
+    expect(f18FdgPet.questions.locked.when).toContain("{time}");
+    // 시각과 문장을 나누어 둔다 — 이어 붙이면 좁은 화면에서 어절이 갈린다
+    expect(f18FdgPet.questions.locked.when_note).not.toContain("{time}");
   });
 
   it("생리 일수는 7일까지 고를 수 있다", () => {

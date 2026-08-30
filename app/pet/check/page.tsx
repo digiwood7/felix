@@ -73,7 +73,7 @@ function hintsOf(
   reservation: Reservation,
   timeline: Timeline,
 ): ScheduleHints {
-  const hints: ScheduleHints = {};
+  const hints: ScheduleHints = { opensAt: {} };
 
   for (const day of timeline) {
     for (const item of day.items) {
@@ -81,12 +81,33 @@ function hintsOf(
       const label = `${labelOf(day.date, day.weekday)} ${item.time}`;
       if (item.kind === "fasting" && !hints.fastingStart) {
         hints.fastingStart = label;
+        // 문항을 여는 시각도 **타임라인에 뜬 그 값** 이다 (PRD §9.4)
+        hints.opensAt!.fasting_start = { date: day.date, time: item.time, label };
       }
       if (item.kind === "conditional" && !hints.diabetesCutoff) {
         hints.diabetesCutoff = label;
+        hints.opensAt!.diabetes_cutoff = {
+          date: day.date,
+          time: item.time,
+          label,
+        };
       }
     }
   }
+
+  /**
+   * 검사 당일 00:00.
+   *
+   * 임신 · 수유 · 생리는 며칠 전 답이 당일과 달라질 수 있으므로
+   * 당일에 묻는다. 시각까지 미룰 이유는 없다 — 새벽 1시에 답해도
+   * 그날 사실이다.
+   */
+  const examDay = timeline[timeline.length - 1];
+  hints.opensAt!.exam_day = {
+    date: examDay.date,
+    time: "00:00",
+    label: `${labelOf(examDay.date, examDay.weekday)} 00:00`,
+  };
 
   const kept = deadlineBefore(reservation, ruleset.fasting.hours);
   // 요일은 타임라인이 이미 구해 두었다. 여기서 다시 요일을 계산하지 않는다

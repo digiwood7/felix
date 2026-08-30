@@ -1,4 +1,9 @@
-import type { ExamRuleset, NumberField, TimeCopy } from "./rules/types";
+import type {
+  AnswerableFrom,
+  ExamRuleset,
+  NumberField,
+  TimeCopy,
+} from "./rules/types";
 import type { Reservation } from "./schedule";
 
 /**
@@ -80,6 +85,24 @@ export interface Question {
   /** 직접 입력받는 숫자 */
   fields?: NumberField[];
   unknownLabel?: string;
+  /**
+   * 이 문항이 열리는 시점. 없으면 언제든 답할 수 있다.
+   *
+   * **화면에 뜬 값(내림) 이다.** 판정선이 아니다 — 잠긴 문항이
+   * "03:00부터" 라고 말하는데 03:10 에 잠겨 있으면, 환자는 화면
+   * 두 곳의 숫자를 대조하게 된다 (PRD §9.4).
+   */
+  opensAt?: OpensAt;
+}
+
+/** 문항이 열리는 시점. 화면에 그대로 뜨는 값이다 */
+export interface OpensAt {
+  /** "YYYY-MM-DD" */
+  date: string;
+  /** "HH:MM" */
+  time: string;
+  /** 화면에 쓰는 표기 — "8월 31일(월) 03:00" */
+  label: string;
 }
 
 /**
@@ -106,6 +129,16 @@ export interface ScheduleHints {
   fastingKeptAt?: TimeAnswer;
   /** 위 판정선의 표기 — "8월 20일(목) 02:25". 되묻기 문구에 들어간다 */
   fastingKeptLabel?: string;
+  /**
+   * 문항을 여는 시점을 기준점별로 모아 둔 표.
+   *
+   * 값은 **타임라인에 뜬 것과 같은 숫자**다 (내림). 화면이 "03:00부터"
+   * 라고 말했으면 03:00 에 열려야 한다. 여기서 다시 계산하지 않는
+   * 이유도 같다 — 두 곳에서 계산하면 언젠가 한 글자가 갈린다.
+   *
+   * "always" 는 담지 않는다. 담을 시점이 없는 것이 곧 always 다.
+   */
+  opensAt?: Partial<Record<Exclude<AnswerableFrom, "always">, OpensAt>>;
 }
 
 /** 판정선 한 지점 */
@@ -197,6 +230,21 @@ export function atOrBefore(a: TimeAnswer, b: TimeAnswer): boolean {
   return rank(a) <= rank(b);
 }
 
+/**
+ * 그 기준점이 가리키는 시각. "always" 거나 시점을 모르면 undefined —
+ * 잠그지 않는 쪽으로 떨어진다.
+ *
+ * 시점을 모르는 채로 잠그면 답할 길이 사라진다. 이 게이트는 헛수고를
+ * 줄이려고 있는 것이지 문답을 막으려고 있는 것이 아니다.
+ */
+function openOf(
+  from: AnswerableFrom | undefined,
+  hints: ScheduleHints,
+): OpensAt | undefined {
+  if (!from || from === "always") return undefined;
+  return hints.opensAt?.[from];
+}
+
 export function buildQuestions(
   ruleset: ExamRuleset,
   hints: ScheduleHints = {},
@@ -207,6 +255,7 @@ export function buildQuestions(
   return [
     {
       id: "fasting",
+      opensAt: openOf(q.fasting.answerable_from, hints),
       title: q.fasting.ask,
       hint: hints.fastingStart
         ? `${hints.fastingStart}부터 금식입니다. ${itemsLine(
@@ -235,6 +284,7 @@ export function buildQuestions(
     },
     {
       id: "diabetes",
+      opensAt: openOf(q.diabetes.answerable_from, hints),
       title: diabetes?.ask ?? "당뇨약이나 인슐린을 사용하시나요?",
       hint: hints.diabetesCutoff
         ? `${hints.diabetesCutoff}까지만 사용 가능합니다`
@@ -246,6 +296,7 @@ export function buildQuestions(
     },
     {
       id: "body",
+      opensAt: openOf(q.body.answerable_from, hints),
       title: q.body.ask,
       hint: q.body.hint,
       // 두 갈래 버튼이 없는 유일한 문항이다
@@ -256,6 +307,7 @@ export function buildQuestions(
     },
     {
       id: "female",
+      opensAt: openOf(q.female.answerable_from, hints),
       title: q.female.ask,
       hint: q.female.hint,
       yesLabel: q.female.yes_label,

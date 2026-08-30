@@ -76,6 +76,53 @@ describe("문항 구성", () => {
   });
 });
 
+/**
+ * 문항마다 답이 성립하는 때가 다르다 (PRD §8 F2).
+ *
+ * 키 · 몸무게는 언제 답해도 같은 값이지만, "6시간 금식 하셨나요?" 를
+ * 금식 시작 전에 물으면 아직 일어나지 않은 일을 묻는 것이다.
+ */
+describe("문항이 열리는 시점", () => {
+  const OPENS = {
+    opensAt: {
+      fasting_start: {
+        date: "2026-08-20",
+        time: "02:00",
+        label: "8월 20일(목) 02:00",
+      },
+      diabetes_cutoff: {
+        date: "2026-08-20",
+        time: "04:00",
+        label: "8월 20일(목) 04:00",
+      },
+      exam_day: {
+        date: "2026-08-20",
+        time: "00:00",
+        label: "8월 20일(목) 00:00",
+      },
+    },
+  };
+
+  it("문항마다 룰셋이 정한 기준점의 시각이 붙는다", () => {
+    const [fasting, diabetes, body, female] = buildQuestions(f18FdgPet, OPENS);
+    expect(fasting.opensAt?.time).toBe("02:00");
+    expect(diabetes.opensAt?.time).toBe("04:00");
+    expect(female.opensAt?.time).toBe("00:00");
+    // 키 · 몸무게는 언제든 답할 수 있다. 미리 답해 두면 당일에 안 묻는다
+    expect(body.opensAt).toBeUndefined();
+  });
+
+  /**
+   * 시점을 모르는 채로 잠그면 답할 길이 사라진다. 이 게이트는 헛수고를
+   * 줄이려고 있는 것이지 문답을 막으려고 있는 것이 아니다.
+   */
+  it("시점을 모르면 잠그지 않는다", () => {
+    for (const question of buildQuestions(f18FdgPet)) {
+      expect(question.opensAt).toBeUndefined();
+    }
+  });
+});
+
 describe("다음으로 넘어갈 수 있는지", () => {
   const [fasting, diabetes, body, female] = buildQuestions(f18FdgPet);
 

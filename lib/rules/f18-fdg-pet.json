@@ -119,7 +119,16 @@
       "minute_label": "분",
       "minute_step": 10
     },
+    "locked": {
+      "title": "아직 답하실 때가 아닙니다",
+      "when": "{time}부터",
+      "when_note": "답하실 수 있습니다",
+      "hint": "지금 답하면 당일과 달라집니다",
+      "action": "그래도 지금 답하기",
+      "skip": "나중에 답하기"
+    },
     "fasting": {
+      "answerable_from": "fasting_start",
       "ask": "6시간 금식 하셨나요?",
       "yes_label": "네",
       "no_label": "아니요",
@@ -131,11 +140,13 @@
       "recheck_no": "아니요, 없었습니다"
     },
     "diabetes": {
+      "answerable_from": "diabetes_cutoff",
       "yes_label": "예",
       "no_label": "아니오",
       "time_ask": "마지막으로 사용하신 때는 언제인가요?"
     },
     "body": {
+      "answerable_from": "always",
       "ask": "키와 몸무게를 입력해주세요",
       "hint": "모르시면 접수 당일 측정하면 됩니다",
       "unknown_label": "모르겠습니다",
@@ -149,6 +160,7 @@
       }
     },
     "female": {
+      "answerable_from": "exam_day",
       "ask": "만 50세 이하 여성이신가요?",
       "hint": "임신 · 수유 · 생리 여부만 확인합니다",
       "yes_label": "예",
@@ -205,6 +217,9 @@
     "answered_at": "{time}에 답하신 내용입니다",
     "empty": "아직 문답에 답하지 않으셨습니다",
     "empty_action": "검사 준비 확인하기",
+    "incomplete": "아직 답하지 않은 항목이 남아 있습니다",
+    "incomplete_hint": "빠진 항목은 접수처에서 다시 여쭙게 됩니다",
+    "incomplete_action": "마저 답하기",
     "stale": "이 답변은 {date}에 작성하셨습니다",
     "stale_hint": "금식과 복약은 검사 당일 사실이라야 합니다",
     "stale_action": "오늘 기준으로 다시 답하기"

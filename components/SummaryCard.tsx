@@ -11,6 +11,7 @@ import { toKoreanDateLabel } from "@/lib/koreanTime";
 import { answerCodes, distanceOf } from "@/lib/logEvent";
 import { sendEvent } from "@/lib/logSend";
 import type { Answers, TimeAnswer } from "@/lib/questions";
+import { buildQuestions, isAnswered } from "@/lib/questions";
 import {
   formatLocation,
   formatReservationDate,
@@ -131,6 +132,27 @@ export default function SummaryCard({
         )}
         hint={card.stale_hint}
         action={card.stale_action}
+        href={checkHref}
+      />
+    );
+  }
+
+  /**
+   * 답하지 않은 문항이 남아 있으면 배지를 띄우지 않는다.
+   *
+   * 아직 답할 때가 아닌 문항은 건너뛸 수 있다(QuestionFlow). 그 길로
+   * 만든 카드에 🟢 가 뜨면, "묻지 않았다" 가 "해당 없다" 로 바뀌어
+   * 읽힌다 — 금식을 답하지 않은 환자가 안심하고 병원에 온다.
+   * 이 방향의 오류가 이 서비스에서 가장 위험하다 (PRD §9.4).
+   *
+   * 답을 지우지는 않는다. 키 · 몸무게는 기기에 남아 다시 묻지 않는다.
+   */
+  if (buildQuestions(ruleset).some((q) => !isAnswered(q, stored.answers))) {
+    return (
+      <Notice
+        message={card.incomplete}
+        hint={card.incomplete_hint}
+        action={card.incomplete_action}
         href={checkHref}
       />
     );

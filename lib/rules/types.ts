@@ -43,6 +43,25 @@ export type TriageCondition =
 /** 제한이 시작되는 기준점 */
 export type RestrictionFrom = "prev_day_start";
 
+/**
+ * 문항이 열리는 시점 — 코드가 해석한다 (PRD §8 F2).
+ *
+ * 문항마다 답이 성립하는 때가 다르다. 키 · 몸무게는 언제 답해도 같은
+ * 값이지만, "6시간 금식 하셨나요?" 를 금식 시작 전에 물으면 **아직
+ * 일어나지 않은 일**을 묻는 것이다. 그렇게 받은 답은 당일 사실과
+ * 다르고, 그 카드를 접수에 내밀면 서비스가 거짓 안심을 준 것이 된다.
+ *
+ * 여는 문턱은 **화면에 뜬 값(내림)** 으로 잡는다. 판정선(예약에서
+ * 정확히 뺀 값)으로 잠그면, 화면에 "03:00부터" 라고 써 놓고 03:10 에
+ * 눌렀을 때 잠기는 모순이 생긴다. 여는 쪽은 이르게 틀리는 것이
+ * 안전한 방향이다 (PRD §9.4).
+ */
+export type AnswerableFrom =
+  | "always"
+  | "fasting_start"
+  | "diabetes_cutoff"
+  | "exam_day";
+
 /** 타임라인에서의 표시 방식 */
 export type RestrictionDisplay = "all_day";
 
@@ -262,7 +281,11 @@ export interface Restriction {
 export interface QuestionCopy {
   /** 시각을 묻는 모든 문항이 공유한다 */
   time: TimeCopy;
+  /** 아직 답할 때가 아닌 문항에 붙는 문구 */
+  locked: LockedCopy;
   fasting: {
+    /** 없으면 "always" 다 — 언제 답해도 같은 값인 문항 */
+    answerable_from?: AnswerableFrom;
     ask: string;
     yes_label: string;
     no_label: string;
@@ -282,6 +305,7 @@ export interface QuestionCopy {
     recheck_no: string;
   };
   diabetes: {
+    answerable_from?: AnswerableFrom;
     /** 질문 자체는 conditional.diabetes.ask 를 쓴다. 여기 두면 두 벌이 된다 */
     yes_label: string;
     no_label: string;
@@ -289,6 +313,7 @@ export interface QuestionCopy {
     time_ask: string;
   };
   body: {
+    answerable_from?: AnswerableFrom;
     ask: string;
     hint: string;
     /** 모르면 접수에서 잰다. 억지로 채우게 하면 틀린 값이 들어온다 */
@@ -297,6 +322,7 @@ export interface QuestionCopy {
     weight: NumberField;
   };
   female: {
+    answerable_from?: AnswerableFrom;
     ask: string;
     hint: string;
     yes_label: string;
@@ -308,6 +334,31 @@ export interface QuestionCopy {
     day_max: number;
     day_unit: string;
   };
+}
+
+/**
+ * 아직 답할 때가 아닌 문항 (PRD §8 F2).
+ *
+ * **막지 않는다.** 기기 시계는 틀릴 수 있고, 대신 답해 주는 보호자도
+ * 있다. 강조만 바꾸고 길은 늘 열어 둔다 — `action` 이 그 길이다.
+ */
+export interface LockedCopy {
+  title: string;
+  /**
+   * 언제부터 답할 수 있는지. `{time}` 자리에 시각이 들어간다.
+   *
+   * **문장과 나누어 둔다.** 한 줄로 이으면 좁은 화면에서 "답하실 /
+   * 수 있습니다" 처럼 어절 한가운데가 갈린다. 여기서 환자가 찾는
+   * 것은 시각 하나이므로, 시각이 한 줄에 온전히 서야 훑을 때 걸린다.
+   */
+  when: string;
+  /** 위 줄에 이어지는 문장. 시각을 담지 않는다 */
+  when_note: string;
+  hint: string;
+  /** 그래도 지금 답하겠다는 길 */
+  action: string;
+  /** 건너뛰고 다음 문항으로. 키 · 몸무게만 미리 답하고 나갈 수 있어야 한다 */
+  skip: string;
 }
 
 export interface TimeCopy {
@@ -419,6 +470,16 @@ export interface CardCopy {
   /** 문답 없이 카드에 바로 들어온 경우 */
   empty: string;
   empty_action: string;
+  /**
+   * 답하지 않은 문항이 남아 있는 경우.
+   *
+   * 배지를 띄우지 않는다. 금식을 아직 답하지 않은 카드에 🟢 가 뜨면,
+   * 그건 "묻지 않았다" 를 "해당 없다" 로 바꿔 읽은 것이다 — 이
+   * 서비스에서 가장 위험한 방향의 오류다 (PRD §9.4).
+   */
+  incomplete: string;
+  incomplete_hint: string;
+  incomplete_action: string;
   /**
    * 검사일이 아닌 날에 답한 카드.
    *

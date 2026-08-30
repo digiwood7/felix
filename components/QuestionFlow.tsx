@@ -5,7 +5,15 @@ import { useEffect, useId, useState } from "react";
 
 import { clearBody, loadBody, saveAnswers } from "@/lib/answers";
 import { answersHash } from "@/lib/encode";
-import type { Answers, DayRef, Question, TimeAnswer } from "@/lib/questions";
+import { isBeforeInKST } from "@/lib/koreanTime";
+import type {
+  Answers,
+  DayRef,
+  OpensAt,
+  Question,
+  QuestionId,
+  TimeAnswer,
+} from "@/lib/questions";
 import {
   MENSTRUATION_ID,
   NONE_ID,
@@ -14,7 +22,12 @@ import {
   isAnswered,
   isValidNumber,
 } from "@/lib/questions";
-import type { ExamRuleset, NumberField, TimeCopy } from "@/lib/rules/types";
+import type {
+  ExamRuleset,
+  LockedCopy,
+  NumberField,
+  TimeCopy,
+} from "@/lib/rules/types";
 
 /**
  * S3 문답 — PRD §8 F2 · §10
@@ -65,7 +78,51 @@ export default function QuestionFlow({
   const question = questions[step];
   const isLast = step === questions.length - 1;
 
+  /**
+   * 아직 답할 때가 아닌 문항을 가린다 (PRD §8 F2).
+   *
+   * 금식 시작 전에 "6시간 금식 하셨나요?" 를 물으면 아직 일어나지
+   * 않은 일을 묻는 것이고, 그 답으로 만든 카드는 당일 사실과 다르다.
+   * 키 · 몸무게처럼 언제 답해도 같은 값인 문항은 열려 있다.
+   *
+   * 서버에는 "지금" 이 없다. 마운트 후에 정하고, 그 전에는 잠그지
+   * 않는다 — 잘못 그려도 답하는 길이 좁아지지 않는 쪽이다.
+   * 문항을 넘길 때마다 다시 읽는다. 문답 도중에도 시각은 흐른다.
+   */
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => setNow(Date.now()), [step]);
+
+  /** "그래도 지금 답하기" 로 연 문항. 기기 시계가 틀릴 수 있다 */
+  const [unlocked, setUnlocked] = useState<QuestionId[]>([]);
+
+  /** 지금이 이 문항이 열리는 시각보다 이른가 — 열어 두었는지와 무관하다 */
+  const tooEarly =
+    question.opensAt !== undefined &&
+    now !== null &&
+    isBeforeInKST(question.opensAt.date, question.opensAt.time, now);
+
+  const locked = tooEarly && !unlocked.includes(question.id);
+
+  // 잠긴 문항은 답하지 않고도 넘어간다. 그러지 않으면 키 · 몸무게를
+  // 미리 답하려는 사람이 첫 문항에서 막힌다
+  const canAdvance = locked || isAnswered(question, answers);
+
   function goBack() {
+    /**
+     * "그래도 지금 답하기" 로 연 문항이면, 이전은 **그 화면으로**
+     * 되돌린다.
+     *
+     * 사용자가 방금 한 일은 잠긴 문항을 연 것이다. 이전은 그것을
+     * 되돌리는 자리인데, 여기서 문답 밖(타임라인)으로 나가 버리면
+     * 잘못 눌러 열어 본 사람이 처음부터 다시 들어와야 한다.
+     *
+     * 시각이 이미 지났으면 되돌릴 것이 없다 — 그때는 평소대로 간다.
+     * 답은 지우지 않는다. 지우는 것은 되돌리기가 아니다.
+     */
+    if (tooEarly && unlocked.includes(question.id)) {
+      setUnlocked(unlocked.filter((id) => id !== question.id));
+      return;
+    }
     if (step === 0) router.push(backHref);
     else setStep(step - 1);
   }
@@ -77,8 +134,8 @@ export default function QuestionFlow({
    * setState 는 다음 렌더에 반영되므로 여기서 answers 를 읽으면
    * 한 박자 전 값을 보고 "아직 안 골랐다" 며 멈춘다.
    */
-  function goNext(current: Answers = answers) {
-    if (!isAnswered(question, current)) return;
+  function goNext(current: Answers = answers, skip = false) {
+    if (!skip && !isAnswered(question, current)) return;
     if (isLast) {
       /**
        * 답을 주소 조각에 실어 카드로 넘어간다.
@@ -139,13 +196,21 @@ export default function QuestionFlow({
         )}
 
         <div className="mt-5">
-          <Body
-            key={question.id}
-            question={question}
-            answers={answers}
-            onChange={setAnswers}
-            onAdvance={goNext}
-          />
+          {locked ? (
+            <Locked
+              copy={ruleset.questions.locked}
+              opensAt={question.opensAt!}
+              onAnswerAnyway={() => setUnlocked([...unlocked, question.id])}
+            />
+          ) : (
+            <Body
+              key={question.id}
+              question={question}
+              answers={answers}
+              onChange={setAnswers}
+              onAdvance={goNext}
+            />
+          )}
         </div>
       </div>
 
@@ -159,11 +224,15 @@ export default function QuestionFlow({
         </button>
         <button
           type="button"
-          onClick={() => goNext()}
-          disabled={!isAnswered(question, answers)}
+          onClick={() => goNext(answers, locked)}
+          disabled={!canAdvance}
           className="min-h-[60px] flex-1 rounded-2xl bg-slate-900 text-[1.24rem] font-bold text-white disabled:bg-slate-300 disabled:text-slate-500"
         >
-          {isLast ? "요약카드 보기" : "다음"}
+          {locked
+            ? ruleset.questions.locked.skip
+            : isLast
+              ? "요약카드 보기"
+              : "다음"}
         </button>
       </div>
     </div>
@@ -457,6 +526,57 @@ function Body({
       );
     }
   }
+}
+
+/**
+ * 아직 답할 때가 아닌 문항.
+ *
+ * **막지 않는다.** 기기 시계는 틀릴 수 있고, 대신 답해 주는 보호자도
+ * 있다 — "그래도 지금 답하기" 로 언제든 열린다. 강조만 바꾸고 길은
+ * 늘 열어 둔다 (S2 의 CheckCta 와 같은 원칙).
+ *
+ * 여는 시각은 **타임라인에 뜬 그 숫자** 다. 판정선으로 잠그면 화면에
+ * "03:00부터" 라고 써 놓고 03:10 에 잠기는 모순이 생긴다 (PRD §9.4).
+ */
+function Locked({
+  copy,
+  opensAt,
+  onAnswerAnyway,
+}: {
+  copy: LockedCopy;
+  opensAt: OpensAt;
+  onAnswerAnyway: () => void;
+}) {
+  return (
+    <section className="rounded-2xl border-2 border-slate-400 bg-slate-100 px-4 py-4">
+      <p className="text-[1.24rem] leading-snug font-extrabold text-slate-900">
+        {copy.title}
+      </p>
+      {/* 시각이 한 줄에 온전히 선다. 문장을 이어 붙이면 좁은 화면에서
+          "답하실 / 수 있습니다" 로 어절이 갈린다 */}
+      <p className="mt-2 text-[1.24rem] leading-snug font-extrabold text-slate-900">
+        {copy.when.replace("{time}", opensAt.label)}
+      </p>
+      <p className="text-[1.18rem] leading-snug font-bold text-slate-800">
+        {copy.when_note}
+      </p>
+      {/* 한 줄 띄운다. 위 두 줄은 "언제부터 답할 수 있는가" 하나를
+          말하고, 이 줄은 "왜 지금은 아닌가" 라 성격이 다르다.
+          붙여 두면 세 줄이 한 덩어리로 읽혀 시각이 묻힌다 */}
+      <p className="mt-4 text-[1.06rem] leading-snug text-slate-600">
+        {copy.hint}
+      </p>
+      {/* 길을 남긴다. 버튼으로 만들면 "나중에 답하기" 와 무게가 같아져
+          지금 답하는 쪽이 기본처럼 보인다 */}
+      <button
+        type="button"
+        onClick={onAnswerAnyway}
+        className="mt-3 -mb-2 min-h-[48px] text-[1.06rem] font-bold text-slate-900 underline underline-offset-4"
+      >
+        {copy.action}
+      </button>
+    </section>
+  );
 }
 
 function SubTitle({ children }: { children: React.ReactNode }) {
