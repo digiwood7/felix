@@ -14,6 +14,7 @@ import { f18FdgPet } from "@/lib/rules";
 import { buildTimeline, type Timeline as TimelineData } from "@/lib/schedule";
 import { locationParam, oneParam } from "@/lib/searchParam";
 import { speechBlocks } from "@/lib/speech";
+import { speechAudioBlocks } from "@/lib/speechAudio";
 
 /**
  * S2 — 개인화 역산 타임라인 (PRD §8 F1)
@@ -89,6 +90,7 @@ export default async function TimelineScreen({
       <div className="mb-6 flex">
         <SpeakButton
           blocks={speechBlocks(f18FdgPet, timeline)}
+          audioBlocks={speechAudioBlocks(f18FdgPet, timeline, b.id)}
           copy={f18FdgPet.actions}
         />
       </div>
